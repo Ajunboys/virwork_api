@@ -1,0 +1,44 @@
+<?xml version="1.0"?>
+<info xmlns:xsi= "http://www.w3.org/2001/XMLSchema-instance"
+      xsi:noNamespaceSchemaLocation="https://apps.nextcloud.com/schema/apps/info.xsd">
+    <id>virwork_api</id>
+    <name>VirWork API</name>
+    <summary>This application enables a set of APIs that external systems can use to manage users, groups and apps.</summary>
+    <description>
+        [Virwork Cloud Storage Interface]This application enables a set of APIs that external systems can use to create, edit, delete and query user
+        attributes, query, set and remove groups, set quota and query total storage used in Nextcloud. Group admin users
+        can also query Nextcloud and perform the same functions as an admin for groups they manage. The API also enables
+        an admin to query for active Nextcloud applications, application info, and to enable or disable an app remotely.
+        Once the app is enabled, http requests can be used via a Basic Auth header to perform any of the functions
+        listed above. More information is available in the Provisioning API documentation, including example calls
+        and server responses.
+    </description>
+    
+    <version>5.0.1</version>
+    
+    <licence>agpl</licence>
+    
+    <author mail="weijunqiang2010@foxmail.com" >JUNQIANG WEI</author>
+    
+    <namespace>Virwork_API</namespace>
+
+    <default_enable/>
+    
+    <types>
+        <authentication/>
+    </types>
+
+    <category>integration</category>
+    
+    <bugs>https://github.com/Ajunboys/virwork_api/issues</bugs>
+    <dependencies>
+        <database min-version="5.5">mysql</database>
+        <nextcloud min-version="13" max-version="15"/>
+    </dependencies>
+
+    <settings>
+        <admin>OCA\Virwork_API\Settings\Admin</admin>
+    </settings>
+
+    
+</info>

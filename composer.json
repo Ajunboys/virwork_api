@@ -1,0 +1,15 @@
+{
+    "name": "VirWork",
+    "description": "manage user and group",
+    "type": "project",
+    "license": "AGPL",
+    "authors": [
+        {
+            "name": "virwork_api"
+        }
+    ],
+    "require": {},
+    "require-dev": {
+        "phpunit/phpunit": "^5.4"
+    }
+}
