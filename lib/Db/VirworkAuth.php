@@ -21,7 +21,7 @@ class VirworkAuth extends Entity implements JsonSerializable {
 	protected $clientToken;
 
 	public function __construct() {
-		$this->addType('id', 'int');
+		$this->addType('id', 'integer');
 		$this->addType('username', 'string');
 		$this->addType('password', 'string');
 		$this->addType('clientToken', 'string');

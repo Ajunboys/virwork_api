@@ -9,9 +9,13 @@
  */
 return [
 	'ocs' =>[
+
+	   ['name' => 'users#api', 'url' => '/', 'verb' => 'GET'],
 		/*all users:<server>/ocs/v2.php/apps/virwork_api/users?operation_code=virwork_cloudstorage_account*/
 	   ['name' => 'users#getUsers', 'url' => '/users', 'verb' => 'GET'],
-	   ['name' => 'users#getUserAuthInfos', 'url' => '/user_auth', 'verb' => 'GET'],
+	   ['name' => 'users#getUserAuthInfo', 'url' => '/user_auth', 'verb' => 'GET'],
+	   ['name' => 'users#getUserAuthInfos', 'url' => '/user_auths', 'verb' => 'GET'],
+	   ['name' => 'users#saveVirworkAuth', 'url' => '/user_auth/save', 'verb' => 'GET'],
 	   /*all groups:<server>/ocs/v2.php/apps/virwork_api/groups?operation_code=virwork_cloudstorage_account*/
 	   ['name' => 'users#getGroups', 'url' => '/groups', 'verb' => 'GET'],
 	   /*all groups details:<server>/ocs/v2.php/apps/virwork_api/details?operation_code=virwork_cloudstorage_account*/

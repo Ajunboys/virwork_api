@@ -37,14 +37,14 @@ class VirworkAuthGroupAccess extends Entity  implements JsonSerializable {
 	protected $publicShare;
 
 	public function __construct() {
-		$this->addType('id', 'int');
+		$this->addType('id', 'integer');
 		$this->addType('group', 'string');
 		$this->addType('quota', 'string');		
-		$this->addType('upload', 'int');
-		$this->addType('download', 'int');
-		$this->addType('delete', 'int');
-		$this->addType('local_share', 'int');
-		$this->addType('public_share', 'int');
+		$this->addType('upload', 'integer');
+		$this->addType('download', 'integer');
+		$this->addType('delete', 'integer');
+		$this->addType('local_share', 'integer');
+		$this->addType('public_share', 'integer');
 	}
 
 

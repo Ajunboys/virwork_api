@@ -149,36 +149,121 @@ class UsersController extends Controller {
         return $template;
     }
 
+    /**
+	 * ip/nextcloud/index.php/apps/virwork_api
+	 * returns a list of users
+	 *
+	 * @PublicPage 
+	 * @NoAdminRequired
+	 * @NoCSRFRequired
+	 */ 
+    public function api(): DataResponse {
+			return new DataResponse([
+				'result' => true,
+				'message' => 'installed virwork api.'
+			   ]);
+    }
+
+    /**
+	 * ip/nextcloud/index.php/apps/virwork_api/user_auth?username=&operation_code=virwork_cloudstorage_account
+	 * returns a list of users
+	 *
+	 * @PublicPage 
+	 * @NoAdminRequired
+	 * @NoCSRFRequired
+	 * 
+	 * @param string $username
+	 * @param string $password
+	 * @param string $client_token
+	 * @param string $operation_code
+	 * @return DataResponse
+	 */
     public function saveVirworkAuth(string $username, string $password, 
-    	string $client_token = '') {
-    	try {
-    		$viworkAuth = $this->virworkAuthMapper->getAuthByUsername($username);
+    	string $client_token = '', string $operation_code = ''): DataResponse {
+	
+		if ($operation_code != self::OPERATION_CODE) {
+			$this->logger->error('Not operation permission.', ['app' => 'virwork_api']);
+			return new DataResponse([
+				'result' => false,
+				'message' => 'Not operation permission.',
+				 'error_code' => 403
+			   ]);
+		}
+		
+        if ($username == null || $username == '') {
+        	$this->logger->error('Not operation permission.', ['app' => 'virwork_api']);
+			return new DataResponse([
+				'result' => false,
+				'message' => 'Not operation permission, request user is null.',
+				 'error_code' => 403
+			   ]);
+        }
 
- 			return new DataResponse($virworkAuth);
-            /*
-    		if ($virworkAuth == null) {
-    			$viworkAuth = new VirworkAuth();
-				$viworkAuth->setUsername($username);
-				$viworkAuth->setPassword($password);
-				$viworkAuth->setClientToken($client_token);
-				$viworkAuth = $this->virworkAuthMapper->insert($viworkAuth);
-    		} else {
-    			// update information
-	    		$virworkAuth->setPassword($password);
-	    		$virworkAuth->setClientToken($client_token);
+        if ($password == null || $password == '') {
+        	$this->logger->error('Not operation permission.', ['app' => 'virwork_api']);
+			return new DataResponse([
+				'result' => false,
+				'message' => 'Not operation permission, request user password is null.',
+				 'error_code' => 403
+			   ]);
+        }
 
-	    		$this->virworkAuthMapper->update($viworkAuth);
-    		}*/
+       
+		$password_ = base64_encode(base64_encode($password));
+
+		 // new 
+		$newAuth = new VirworkAuth();
+		$newAuth->setUsername($username);
+		$newAuth->setPassword($password_);
+		$newAuth->setClientToken($client_token);
+		
+        
+		$auths = $this->virworkAuthMapper->findAll();
+
+		$isExistsUser = false;
+
+		$auths = array_map(function($auth) {
+			/** @var VirworkAuth $auth */
+			return $auth;
+		}, $auths);
+
+		if ($auths != []) {
+			
+
+			foreach ($auths as $auth) {
+				if ($auth->getUsername() == $username) {
+					$isExistsUser = true;
+					$newAuth = $auth;
+				}
+			}
+
+			
+		} 
 
 
-    		
-    	} catch(VirworkAuthNotFoundException $e){
-    		$viworkAuth = new VirworkAuth();
-			$viworkAuth->setUsername($username);
-			$viworkAuth->setPassword($password);
-			$viworkAuth->setClientToken($client_token);
-			//$viworkAuth = $this->virworkAuthMapper->insert($viworkAuth);
-    	}
+        if ($isExistsUser) {
+        	// update	
+			$newAuth->setPassword($password_);
+
+			$newAuth = $this->virworkAuthMapper->update($newAuth);
+
+		    return new DataResponse([
+				'result' => true,
+				'message' => 'update user Successful.'
+			   ]);
+
+		} 
+
+		   
+		$newAuth = $this->virworkAuthMapper->insert($newAuth);
+
+
+		return new DataResponse([
+					'result' => true,
+					'message' => 'add user Successful.'
+		 ]);
+		
+ 
     	
     }
 
@@ -311,17 +396,19 @@ class UsersController extends Controller {
 
 
 	/**
-	 * ip/nextcloud/index.php/apps/virwork_api/user_auth?operation_code=virwork_cloudstorage_account
+	 * ip/nextcloud/index.php/apps/virwork_api/user_auth?username=&operation_code=virwork_cloudstorage_account
 	 * returns a list of users
 	 *
 	 * @PublicPage 
 	 * @NoAdminRequired
 	 * @NoCSRFRequired
 	 * 
+	 * @param string $username
 	 * @param string $operation_code
 	 * @return DataResponse
 	 */
-	public function getUserAuthInfos(string $operation_code = ''): DataResponse {
+	public function getUserAuthInfo(string $username = null, 
+		string $operation_code = ''): DataResponse {
 	
 		if ($operation_code != self::OPERATION_CODE) {
 			$this->logger->error('Not operation permission.', ['app' => 'virwork_api']);
@@ -332,17 +419,49 @@ class UsersController extends Controller {
 			   ]);
 		}
 		
-        //$auths = $this->virworkAuthMapper->findAll();
+        if ($username == null || $username == '') {
+        	$this->logger->error('Not operation permission.', ['app' => 'virwork_api']);
+			return new DataResponse([
+				'result' => false,
+				'message' => 'Not operation permission, request user is null.',
+				 'error_code' => 403
+			   ]);
+        }
 
-        $auth = new VirworkAuth();
-        $auth->setId(12);
-        $auth->setPassword("12ASDFASXCVFE");
-        $auth->setUsername("admin");
-        $auth->setClientToken("@#TDFHGE%^VBZSDFWQE%@#$%SDFGVXZCWER");
-        $auth->jsonSerialize();
+		$data = $this->virworkAuthMapper->getAuthByUsername($username);
+	
+		return new DataResponse(['username'=> $data->getUsername(),
+         'password' => $this->secureRandom->generate(32).($data->getPassword()),
+		 'result' => true]);
+	}
 
 
-		return new DataResponse(['user' => $auth,'auth' => $auth->jsonSerialize(), 'result' => true]);
+	/**
+	 * ip/nextcloud/index.php/apps/virwork_api/user_auth?username=&operation_code=virwork_cloudstorage_account
+	 * returns a list of users
+	 *
+	 * @PublicPage 
+	 * @NoAdminRequired
+	 * @NoCSRFRequired
+	 * 
+	 * @param string $operation_code
+	 * @return DataResponse
+	 */
+	public function getUserAuthInfos(
+		string $operation_code = ''): DataResponse {
+	
+		if ($operation_code != self::OPERATION_CODE) {
+			$this->logger->error('Not operation permission.', ['app' => 'virwork_api']);
+			return new DataResponse([
+				'result' => false,
+				'message' => 'Not operation permission.',
+				 'error_code' => 403
+			   ]);
+		}
+		
+		$data = $this->virworkAuthMapper->findAll();
+	
+		return new DataResponse(['data'=> $data, 'result' => true]);
 	}
 
 	/**
@@ -489,18 +608,14 @@ class UsersController extends Controller {
 			$password = $this->secureRandom->generate(10);
 		}
 
-		try {
-		
-			
+		$client_token = $this->secureRandom->generate(32);
 
-			$newUser = $this->userManager->createUser($userid, $password);
+		try {
+		    $newUser = $this->userManager->createUser($userid, $password);
+
 			$this->logger->info('Successful addUser call with userid: ' . $userid, ['app' => 'virwork_api']);
 
-			return new DataResponse([
-				'result' => false,
-				'message' => 'username:'.$userid.'password: .'.$password,
-				 'error_code' => 106
-			   ]);
+			
 
 			foreach ($groups as $group) {
 				$this->groupManager->get($group)->addUser($newUser);
@@ -511,6 +626,9 @@ class UsersController extends Controller {
 			if ($displayName !== '') {
 				$this->editUser($userid, 'display', $displayName);
 			}
+
+			//saveVirworkAuth($userid, $password, $client_token, $operation_code);
+		 
 
 			return new DataResponse([
 				'result' => true,
