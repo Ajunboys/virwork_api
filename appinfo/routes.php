@@ -10,24 +10,43 @@
 return [
 	'ocs' =>[
 
-	   ['name' => 'users#api', 'url' => '/', 'verb' => 'GET'],
+	   ['name' => 'Users#api', 'url' => '/', 'verb' => 'GET'],
 		/*all users:<server>/ocs/v2.php/apps/virwork_api/users?operation_code=virwork_cloudstorage_account*/
-	   ['name' => 'users#getUsers', 'url' => '/users', 'verb' => 'GET'],
-	   ['name' => 'users#getUserAuthInfo', 'url' => '/user_auth', 'verb' => 'GET'],
-	   ['name' => 'users#getUserAuthInfos', 'url' => '/user_auths', 'verb' => 'GET'],
-	   ['name' => 'users#saveVirworkAuth', 'url' => '/user_auth/save', 'verb' => 'GET'],
+	   ['name' => 'Users#getUsers', 'url' => '/users', 'verb' => 'GET'],
+	   ['name' => 'Users#getUserAuthInfo', 'url' => '/user_auth', 'verb' => 'GET'],
+	   ['name' => 'Users#getUserAuthInfos', 'url' => '/user_auths', 'verb' => 'GET'],
+	   ['name' => 'Users#saveVirworkAuth', 'url' => '/user_auth/save', 'verb' => 'GET'],
 	   /*all groups:<server>/ocs/v2.php/apps/virwork_api/groups?operation_code=virwork_cloudstorage_account*/
-	   ['name' => 'users#getGroups', 'url' => '/groups', 'verb' => 'GET'],
+	   ['name' => 'Users#getGroups', 'url' => '/groups', 'verb' => 'GET'],
 	   /*all groups details:<server>/ocs/v2.php/apps/virwork_api/details?operation_code=virwork_cloudstorage_account*/
-	   ['name' => 'users#getGroupsDetails', 'url' => '/groups/details', 'verb' => 'GET'],
+	   ['name' => 'Users#getGroupsDetails', 'url' => '/groups/details', 'verb' => 'GET'],
 	   /*a group details: <server>/ocs/v2.php/apps/virwork_api/group?operation_code=virwork_cloudstorage_account&groupId=测试部*/
-	   ['name' => 'users#getGroup', 'url' => '/groups/group/users', 'verb' => 'GET'],
+	   ['name' => 'Users#getGroup', 'url' => '/groups/group/users', 'verb' => 'GET'],
 	   /*a group all user details:<server>/ocs/v2.php/apps/virwork_api/details?operation_code=virwork_cloudstorage_account&groupId=测试部*/
-	   ['name' => 'users#getGroupUsersDetails', 'url' => '/groups/group/users/details', 'verb' => 'GET'],
+	   ['name' => 'Users#getGroupUsersDetails', 'url' => '/groups/group/users/details', 'verb' => 'GET'],
 
-	   ['name' => 'users#addUser', 'url' => '/users/add', 'verb' => 'GET'],
+	   ['name' => 'Users#addUser', 'url' => '/users/add', 'verb' => 'GET'],
 		/*a group all user details:<server>/ocs/v2.php/apps/virwork_api/add?operation_code=virwork_cloudstorage_account*/
-	   ['name' => 'users#addGroup', 'url' => '/groups/add', 'verb' => 'POST'],
+	   ['name' => 'Users#addGroup', 'url' => '/groups/add', 'verb' => 'POST'],
+
+
+	   ['name' => 'VirworkUsers#api', 'url' => '/virwork_users', 'verb' => 'GET'],
+	   ['name' => 'VirworkUsers#getUsers', 'url' => '/virwork_users/all', 'verb' => 'GET'],
+	   ['name' => 'VirworkUsers#getUsersByUsername', 'url' => '/virwork_users/user', 'verb' => 'GET'],
+
+	   ['name' => 'VirworkGroups#api', 'url' => '/virwork_groups', 'verb' => 'GET'],
+	   ['name' => 'VirworkGroups#getGroups', 'url' => '/virwork_groups/all', 'verb' => 'GET'],
+
+	   ['name' => 'VirworkRoles#api', 'url' => '/virwork_roles', 'verb' => 'GET'],
+	   
+	   ['name' => 'VirworkRoles#getRoles', 'url' => '/virwork_roles/all', 'verb' => 'GET'],
+
+	   ['name' => 'VirworkLogin#api', 'url' => '/virwork_login', 'verb' => 'GET'],
+
+	   ['name' => 'VirworkLogin#login', 'url' => '/virwork_login/action', 'verb' => 'POST'],
+
+
+
 	],
     'routes' => [
 

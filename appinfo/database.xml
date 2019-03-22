@@ -183,6 +183,41 @@
 			</field>			
 		</declaration>
 	</table>
+	<table>
+		<name>*dbprefix*virwork_auth_role_permission</name>
+		<declaration>
+			<field>
+				<name>id</name>
+				<type>integer</type>
+				<notnull>true</notnull>
+				<autoincrement>true</autoincrement>
+				<unsigned>true</unsigned>
+				<primary>true</primary>
+			</field>
+
+			<field>
+				<name>role</name>
+				<type>text</type>
+				<notnull>true</notnull>
+				<length>64</length>
+			</field>
+			<field>
+				<name>vvwork_role_id</name>
+				<type>integer</type>
+				<notnull>true</notnull>
+			</field>
+			<field>
+				<name>parameter_name</name>
+				<type>string</type>
+				<notnull>true</notnull>
+			</field>	
+			<field>
+				<name>parameter_value</name>
+				<type>string</type>
+				<notnull>false</notnull>
+			</field>			
+		</declaration>
+	</table>
 
 	<table>
 		<name>*dbprefix*virwork_auth_user_role</name>
