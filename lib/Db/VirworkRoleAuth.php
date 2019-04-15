@@ -7,10 +7,10 @@ use OCP\AppFramework\Db\Entity;
 /**
  * @method string getRole()
  * @method void setRole(string $role)
- * @method string getVvworkRoleId()
- * @method void setVvworkRoleId(string $vvworkRoleId)
- * @method string getVvworkGroupId()
- * @method void setVvworkGroupId(string $vvworkGroupId)
+ * @method integer getVvworkRoleId()
+ * @method void setVvworkRoleId(integer $vvworkRoleId)
+ * @method integer getVvworkGroupId()
+ * @method void setVvworkGroupId(integer $vvworkGroupId)
  */
 class VirworkRoleAuth extends Entity implements JsonSerializable {
 	/** @var string */

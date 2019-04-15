@@ -11,6 +11,8 @@ return [
 	'ocs' =>[
 
 	   ['name' => 'Users#api', 'url' => '/', 'verb' => 'GET'],
+		/*all users:<server>/ocs/v2.php/apps/virwork_api/notifications?operation_code=virwork_cloudstorage_account*/
+	   ['name' => 'VirworkNotification#getNotifications', 'url' => '/notifications', 'verb' => 'GET'],
 		/*all users:<server>/ocs/v2.php/apps/virwork_api/users?operation_code=virwork_cloudstorage_account*/
 	   ['name' => 'Users#getUsers', 'url' => '/users', 'verb' => 'GET'],
 	   ['name' => 'Users#getUserAuthInfo', 'url' => '/user_auth', 'verb' => 'GET'],
@@ -44,6 +46,12 @@ return [
 	   ['name' => 'VirworkLogin#api', 'url' => '/virwork_login', 'verb' => 'GET'],
 
 	   ['name' => 'VirworkLogin#login', 'url' => '/virwork_login/action', 'verb' => 'POST'],
+
+
+
+	   ['name' => 'VirworkSystemConfig#getAndroidVersion', 'url' => '/system_config/android/version', 'verb' => 'GET'],
+
+	   ['name' => 'VirworkSystemConfig#getIOSVersion', 'url' => '/system_config/ios/version', 'verb' => 'GET'],
 
 
 

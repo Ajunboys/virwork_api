@@ -47,4 +47,9 @@ class VirworkRolePermissionAuth extends Entity implements JsonSerializable {
     }
 
 
+    public function getQui(){
+    	
+    }
+
+
 }
