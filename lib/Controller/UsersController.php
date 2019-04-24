@@ -544,6 +544,9 @@ class UsersController extends Controller {
 	 * @param string $password
 	 * @param string $displayName
 	 * @param array $groups
+	 * @param string $quota
+	 * @param string $lang
+	 * @param string $locale
 	 * @param string $operation_code
 	 * @return DataResponse
 	 * @throws OCSException
@@ -552,6 +555,9 @@ class UsersController extends Controller {
 							string $password = '',
 							string $displayName = '',
 							array $groups = [],
+							string $quota = '',
+							string $lang = 'zh_CN',
+							string $locale = 'zh_Hans',
 							string $operation_code = ''): DataResponse {
 
 		if ($operation_code != self::OPERATION_CODE) {
@@ -572,19 +578,54 @@ class UsersController extends Controller {
 			   ]);
 		}
 
-		
+
+
+   		$upload   = true;
+   		$download = true;
+   		$delete   = true;
+   		$local_share = true;
+   		$public_share = true;
+				
 
 		if ($this->userManager->userExists($userid)) {
+
+			$user = $this->userManager->get($userid);
+
+			if ($password !== '') {
+				// update passwd
+				$user->setPassword($password);
+
+				$this->editUser($userid, 'password', $password);
+			}
 			
 			if ($displayName !== '') {
 				$this->editUser($userid, 'display', $displayName);
+				$user->setDisplayName($displayName);
+
 			}
+
+			if ($quota !== '') {
+  				$this->editUser($userid, 'quota', $quota);
+   			}
+
+   			$this->editUser($userid, 'lang', $lang);
+   			$this->editUser($userid, 'locale', $locale);
+
+
+
+   			$this->editUser($userid, 'upload', $upload);
+   			$this->editUser($userid, 'download', $download);
+   			$this->editUser($userid, 'delete', $delete);
+   			$this->editUser($userid, 'local_share', $local_share);
+   			$this->editUser($userid, 'public_share', $public_share);
 
 			return new DataResponse([
 				'result' => true,
 				'message' => 'update User ["'.$userid.'"] Successful.'
 			   ]);
 		}
+
+
 
 
 		if ($groups !== []) {
@@ -611,7 +652,9 @@ class UsersController extends Controller {
 		$client_token = $this->secureRandom->generate(32);
 
 		try {
+
 		    $newUser = $this->userManager->createUser($userid, $password);
+
 
 			$this->logger->info('Successful addUser call with userid: ' . $userid, ['app' => 'virwork_api']);
 
@@ -624,8 +667,26 @@ class UsersController extends Controller {
 			
 
 			if ($displayName !== '') {
+				
+				$newUser->setDisplayName($displayName);
+
 				$this->editUser($userid, 'display', $displayName);
 			}
+
+			if ($quota !== '') {
+  				$this->editUser($userid, 'quota', $quota);
+   			}
+
+
+   			$this->editUser($userid, 'lang', $lang);
+   			$this->editUser($userid, 'locale', $locale);
+
+
+   			$this->editUser($userid, 'upload', $upload);
+   			$this->editUser($userid, 'download', $download);
+   			$this->editUser($userid, 'delete', $delete);
+   			$this->editUser($userid, 'local_share', $local_share);
+   			$this->editUser($userid, 'public_share', $public_share);
 
 			//saveVirworkAuth($userid, $password, $client_token, $operation_code);
 		 
@@ -652,6 +713,60 @@ class UsersController extends Controller {
 		}
 	}
 
+	
+	/**
+	 * returns a list of user preferences details with username
+	 *
+	 * @PublicPage 
+	 * @NoAdminRequired
+	 * @NoCSRFRequired
+	 *
+	 * @param string $username
+	 * @param string $operation_code
+	 * @return DataResponse
+	 */
+	public function getUserPreferencesValues(string $username, string $operation_code = ''): DataResponse {
+		if ($operation_code != self::OPERATION_CODE) {
+			$this->logger->error('Not operation permission.', ['app' => 'virwork_api']);
+			return new DataResponse([
+				'result' => false,
+				'message' => 'Not operation permission.',
+				 'error_code' => 403
+			   ]);
+		}
+
+		if ($username == '') {
+			$this->logger->error('Failed addUser attempt: username is null.', ['app' => 'virwork_api']);
+			return new DataResponse([
+				'result' => false,
+				'message' => 'Failed addUser attempt: username is null.',
+				 'error_code' => 102
+			   ]);
+		}
+
+		if ($this->userManager->userExists($username)) {
+
+			$upload = $this->config->getUserValue($username, 'files', 'upload', false);
+			$download = $this->config->getUserValue($username, 'files', 'download', false);
+			$delete = $this->config->getUserValue($username, 'files', 'delete', false);
+			$local_share = $this->config->getUserValue($username, 'files', 'local_share', false);
+			$public_share = $this->config->getUserValue($username, 'files', 'public_share', false);
+
+			$quota = $this->config->getUserValue($username, 'files', 'quota', '0 B');
+			return new DataResponse([
+				'upload' => $upload, 
+				'download' => $download, 
+				'delete' => $delete, 
+				'local_share' => $local_share,
+				'public_share' => $public_share, 
+				'quota' => $quota, 
+				'result' => true]);
+		}
+
+		return new DataResponse(['message' => 'the user not exist', 'result' => false]);
+	}
+
+
 
 	/**
 	 * @PublicPage 
@@ -671,10 +786,18 @@ class UsersController extends Controller {
 		$targetUser = $this->userManager->get($userId);
 		if ($targetUser === null) {
 			
+			return new DataResponse([
+				'result' => false,
+				'message' => 'not found user information.'
+			   ]);
 		}
 
 		if ($key == 'display') {
 			$targetUser->setDisplayName($value);
+
+            $userAccountData = ['displayname'=> $value, 'displaynameScope' => 'contacts'];
+            
+			$this->accountManager->updateUser($targetUser, $userAccountData);
 		} else if ($key == 'quota') {
 			    $quota = $value;
 				if ($quota !== 'none' && $quota !== 'default') {
@@ -693,7 +816,21 @@ class UsersController extends Controller {
 					}
 				}
 				$targetUser->setQuota($quota);
-		}
+		} else if ($key == 'lang') {
+			$this->config->setUserValue($targetUser->getUID(), 'core', 'lang', $value);
+		} else if ($key == 'locale') {
+			$this->config->setUserValue($targetUser->getUID(), 'core', 'locale', $value);
+		} else if ($key == 'download') {
+			$this->config->setUserValue($targetUser->getUID(), 'files', 'download', $value);
+		} else if ($key == 'upload') {
+			$this->config->setUserValue($targetUser->getUID(), 'files', 'upload', $value);
+		} else if ($key == 'delete') {
+			$this->config->setUserValue($targetUser->getUID(), 'files', 'delete', $value);
+		} else if ($key == 'local_share') {
+			$this->config->setUserValue($targetUser->getUID(), 'files', 'local_share', $value);
+		} else if ($key == 'public_share') {
+			$this->config->setUserValue($targetUser->getUID(), 'files', 'public_share', $value);
+		} 
 
 		
 
@@ -778,6 +915,8 @@ class UsersController extends Controller {
 		return $this->getGroupUsers($groupId, $operation_code);
 	}
 
+
+
 	/**
 	 * creates a new group
 	 *
@@ -810,27 +949,34 @@ class UsersController extends Controller {
 		}
 		// Check if it exists
 		if($this->groupManager->groupExists($groupid)){
-			throw new OCSException('group exists', 102);
+			return new DataResponse([
+				'result' => true,
+				'message' => 'group exists.'
+			   ]);
 		}
+		
 		$this->groupManager->createGroup($groupid);
-		return new DataResponse();
+
+		return new DataResponse([
+				'result' => true,
+				'message' => 'add group Successful.'
+			   ]);
 	}
 
-
     /**
-	 * creates a new group
+	 * sync new group
 	 *
 	 * 
 	 * @PublicPage 
 	 * @NoAdminRequired
 	 * @NoCSRFRequired
 	 *
-	 * @param array $groupid
+	 * @param array $groups
 	 * @param string $operation_code
 	 * @return DataResponse
 	 * @throws OCSException
 	 */
-	public function addGroups(array $groupid = [], string $operation_code = ''): DataResponse {
+	public function addGroups(array $groups = [], string $operation_code = ''): DataResponse {
 		if ($operation_code != self::OPERATION_CODE) {
 			$this->logger->error('Not operation permission.', ['app' => 'virwork_api']);
 			return new DataResponse([
@@ -839,6 +985,7 @@ class UsersController extends Controller {
 				 'error_code' => 403
 			   ]);
 		}
+
 		// Validate name
 		if($groups == []) {
 			$this->logger->error('Group size is 0.', ['app' => 'virwork_api']);
@@ -848,15 +995,30 @@ class UsersController extends Controller {
 				 'error_code' => 101
 			   ]);
 		}
+
+		// $sysgroups = $this->groupManager->search('', null, 0);
+		// $sysgroups = array_map(function($group) {
+			/** @var IGroup $group */
+			// return $group->getGID();
+		// }, $sysgroups);
+
+		
 		foreach ($groups as $group) {
+
 			// Check if it exists
 			if(!$this->groupManager->groupExists($group)){
 				$this->groupManager->createGroup($group);
-			}
+			} 
+
+			//$this->groupManager->get($group)->delete();
 			
 		}
 		
-		return new DataResponse();
+		return new DataResponse([
+				'result' => true,
+				'message' => $_group.' add groups Successful. '.$sysgroupsMap[$_group]
+		]);
+		
 	}
 
 
@@ -981,6 +1143,38 @@ class UsersController extends Controller {
 			}
 			return new DataResponse(['users' => $usersDetails]);
 	}
+
+	/**
+	 *
+	 * 将用户添加到组
+	 * @PublicPage
+	 * @NoAdminRequired
+	 * @NoCSRFRequired
+	 *
+	 */
+	public function addToGroup(array $users= [], string $groupId = '',string $operation_code = ''): DataResponse {
+	    if ($groupId === '') {
+	        throw new OCSException('', 101);
+	    }
+
+	    $group = $this->groupManager->get($groupId);
+
+	    foreach ($users as $userId){
+	        $targetUser = $this->userManager->get($userId);
+	        if ($group === null) {
+	            throw new OCSException('', 102);
+	        }
+	        if ($targetUser === null) {
+	            throw new OCSException('', 103);
+	        }
+
+	        // Add user to group
+	        $group->addUser($targetUser);
+	    }
+
+	    return new DataResponse();
+	}
+
 
 
 }

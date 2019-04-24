@@ -27,14 +27,19 @@ return [
 	   /*a group all user details:<server>/ocs/v2.php/apps/virwork_api/details?operation_code=virwork_cloudstorage_account&groupId=测试部*/
 	   ['name' => 'Users#getGroupUsersDetails', 'url' => '/groups/group/users/details', 'verb' => 'GET'],
 
-	   ['name' => 'Users#addUser', 'url' => '/users/add', 'verb' => 'GET'],
-		/*a group all user details:<server>/ocs/v2.php/apps/virwork_api/add?operation_code=virwork_cloudstorage_account*/
-	   ['name' => 'Users#addGroup', 'url' => '/groups/add', 'verb' => 'POST'],
+	   ['name' => 'Users#addUser', 'url' => '/users/add', 'verb' => 'POST'],
+
+	   ['name' => 'Users#getUserPreferencesValues', 'url' => '/users/files_permission/{username}', 'verb' => 'GET'],
+
+
+		/*a group all user details:<server>/ocs/v2.php/apps/virwork_api/groups/add?operation_code=virwork_cloudstorage_account*/
+	   ['name' => 'Users#addGroups', 'url' => '/groups/add', 'verb' => 'POST'],
 
 
 	   ['name' => 'VirworkUsers#api', 'url' => '/virwork_users', 'verb' => 'GET'],
 	   ['name' => 'VirworkUsers#getUsers', 'url' => '/virwork_users/all', 'verb' => 'GET'],
 	   ['name' => 'VirworkUsers#getUsersByUsername', 'url' => '/virwork_users/user', 'verb' => 'GET'],
+	    ['name' => 'Users#addToGroup', 'url' => '/groups/addToGroup', 'verb' => 'POST'],
 
 	   ['name' => 'VirworkGroups#api', 'url' => '/virwork_groups', 'verb' => 'GET'],
 	   ['name' => 'VirworkGroups#getGroups', 'url' => '/virwork_groups/all', 'verb' => 'GET'],
@@ -71,7 +76,7 @@ return [
 	   /*a group all user details:index.php/apps/virwork_api/groups/group/users/details?operation_code=virwork_cloudstorage_account&groupId=测试部*/
 	   ['root' => '/virwork','name' => 'users#getGroupUsersDetails', 'url' => '/groups/group/users/details', 'verb' => 'GET'],
 
-	   ['root' => '/virwork','name' => 'users#addUser', 'url' => '/users/add', 'verb' => 'GET'],
+	   ['root' => '/virwork','name' => 'users#addUser', 'url' => '/users/add', 'verb' => 'POST'],
 		/*a group all user details:index.php/apps/virwork_api/groups/add?operation_code=virwork_cloudstorage_account*/
 	   ['root' => '/virwork','name' => 'users#addGroup', 'url' => '/groups/add', 'verb' => 'POST'],
 
