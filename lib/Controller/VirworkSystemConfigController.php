@@ -3,7 +3,16 @@ namespace OCA\Virwork_API\Controller;
 
 use OCP\AppFramework\Http\TemplateResponse;
 use OCP\AppFramework\Http\DataResponse;
+use OCP\AppFramework\Http;
 use OCP\AppFramework\Controller;
+
+
+use OC\Template\SCSSCacher;
+use OCA\Theming\ImageManager;
+use OCA\Theming\ThemingDefaults;
+
+use OCA\Theming\Util;
+use OCP\ITempManager;
 
 use OCP\AppFramework\Http\Template\SimpleMenuAction;
 use OCP\AppFramework\Http\Template\PublicTemplateResponse;
@@ -24,19 +33,8 @@ use OC\Settings\Mailer\NewUserMailHelper;
 use OCA\Provisioning_API\FederatedFileSharingFactory;
 
 
-use OCA\Virwork_API\Db\VirworkAuth;
-use OCA\Virwork_API\Db\VirworkAuthMapper;
-use OCA\Virwork_API\Db\VirworkAuthGroupAccess;
-use OCA\Virwork_API\Db\VirworkAuthGroupAccessMapper;
-
-use OCA\Virwork_API\Db\VirworkRoleAuth;
-use OCA\Virwork_API\Db\VirworkRoleAuthMapper;
-
-use OCA\Virwork_API\Db\VirworkUserRoleAuth;
-use OCA\Virwork_API\Db\VirworkUserRoleAuthMapper;
-
-use OCA\Virwork_API\Exceptions\VirworkAuthGroupAccessNotFoundException;
-use OCA\Virwork_API\Exceptions\VirworkAuthNotFoundException;
+use OCP\Files\File;
+use OCP\Files\IAppData;
 
 use OCP\IConfig;
 use OCP\IGroup;
@@ -53,6 +51,20 @@ use OCP\User\Backend\ISetPasswordBackend;
 
 
 class VirworkSystemConfigController extends Controller {
+    /** @var ThemingDefaults */
+	private $themingDefaults;
+	/** @var SCSSCacher */
+	private $scssCacher;
+
+	/** @var IAppData */
+	private $appData;
+	/** @var ImageManager */
+	private $imageManager;
+
+	/** @var ITempManager */
+	private $tempManager;
+	/** @var Util */
+	private $util;
 
 	/** @var IAppManager */
 	private $appManager;
@@ -76,19 +88,10 @@ class VirworkSystemConfigController extends Controller {
 	protected $groupManager;
 	/** @var AccountManager */
 	protected $accountManager;
-	/** @var VirworkAuthMapper */
-	protected $virworkAuthMapper;
-	/** @var VirworkAuthGroupAccessMapper */
-	protected $virworkAuthGroupAccessMapper;
-
-	/** @var VirworkUserRoleAuthMapper */
-	protected $virworkUserRoleAuthMapper;
-
-	/** @var VirworkRoleAuthMapper */
-	protected $virworkRoleAuthMapper;
 
 	/** @var appName */
 	protected $appName;
+
 
 	/** @var OPERATION_CODE */
 	const OPERATION_CODE = "virwork_cloudstorage_account";
@@ -102,6 +105,12 @@ class VirworkSystemConfigController extends Controller {
 	 * @param IRequest $request
 	 * @param IUserManager $userManager
 	 * @param IConfig $config
+	 * @param ThemingDefaults $themingDefaults
+	 * @param SCSSCacher $scssCacher
+	 * @param IAppData $appData
+	 * @param ImageManager $imageManager	 
+	 * @param Util $util
+	 * @param ImageManager $imageManager
 	 * @param IAppManager $appManager
 	 * @param IGroupManager $groupManager
 	 * @param IUserSession $userSession
@@ -111,16 +120,18 @@ class VirworkSystemConfigController extends Controller {
 	 * @param NewUserMailHelper $newUserMailHelper
 	 * @param FederatedFileSharingFactory $federatedFileSharingFactory
 	 * @param ISecureRandom $secureRandom
-	 * @param VirworkAuthMapper $virworkAuthMapper
-	 * @param VirworkAuthGroupAccessMapper $virworkAuthGroupAccessMapper
-	 * @param VirworkUserRoleAuthMapper $virworkUserRoleAuthMapper
-	 * @param VirworkRoleAuthMapper $virworkRoleAuthMapper
 	 *
 	 */
 	public function __construct($appName, 
 		IRequest $request, 
 	    IUserManager $userManager,
 		IConfig $config,
+		ThemingDefaults $themingDefaults,
+		SCSSCacher $scssCacher,
+		IAppData $appData,
+		Util $util,
+		ImageManager $imageManager,
+		ITempManager $tempManager,
 		IAppManager $appManager,
 		IGroupManager $groupManager,
 		IUserSession $userSession,
@@ -129,15 +140,22 @@ class VirworkSystemConfigController extends Controller {
 		IFactory $l10nFactory,
 		NewUserMailHelper $newUserMailHelper,
 		FederatedFileSharingFactory $federatedFileSharingFactory,
-		ISecureRandom $secureRandom,
-		VirworkAuthMapper $virworkAuthMapper,
-		VirworkAuthGroupAccessMapper $virworkAuthGroupAccessMapper,
-	    VirworkUserRoleAuthMapper $virworkUserRoleAuthMapper,
-		VirworkRoleAuthMapper $virworkRoleAuthMapper){
+		ISecureRandom $secureRandom){
 
 		parent::__construct($appName, $request);
         
 		$this->appName = $appName;
+
+		$this->themingDefaults = $themingDefaults;
+
+		$this->scssCacher = $scssCacher;
+
+		$this->appData = $appData;
+		$this->util = $util;
+
+		$this->tempManager = $tempManager;
+		$this->imageManager = $imageManager;
+
 		$this->appManager = $appManager;
 		$this->logger = $logger;
 		$this->l10nFactory = $l10nFactory;
@@ -251,6 +269,204 @@ class VirworkSystemConfigController extends Controller {
 				]
 		]);
     }
+
+
+
+	/**
+	 *
+	 * @PublicPage 
+	 * @NoAdminRequired
+	 * @NoCSRFRequired
+	 *
+	 * @param string $setting
+	 * @param string $value
+	 * @return DataResponse
+	 * @throws NotPermittedException
+	 */
+	public function updateStylesheet($setting, $value) {
+		$value = trim($value);
+		switch ($setting) {
+			case 'name':
+				if (strlen($value) > 250) {
+					return new DataResponse([
+						'result' => false,
+						'message' => 'The given name is too long'
+					]);
+				}
+				break;
+			case 'url':
+				if (strlen($value) > 500) {
+					return new DataResponse([
+						'result' => false,
+						'message' => 'The given web address is too long'
+					]);
+				}
+				break;
+			case 'imprintUrl':
+				if (strlen($value) > 500) {
+					return new DataResponse([
+						'result' => false,
+						'message' => 'The given legal notice address is too long'
+					]);
+				}
+				break;
+			case 'privacyUrl':
+				if (strlen($value) > 500) {
+					return new DataResponse([
+						'result' => false,
+						'message' => 'The given privacy policy address is too long'
+					]);
+				}
+				break;
+			case 'slogan':
+				if (strlen($value) > 500) {
+					return new DataResponse([
+						'result' => false,
+						'message' => 'The given slogan is too long'
+					]);
+				}
+				break;
+			case 'color':
+				if (!preg_match('/^\#([0-9a-f]{3}|[0-9a-f]{6})$/i', $value)) {
+					return new DataResponse([
+						'result' => false,
+						'message' => 'The given color is invalid'
+					]);
+				}
+				break;
+		}
+
+		$this->themingDefaults->set($setting, $value);
+
+		// reprocess server scss for preview
+		$cssCached = $this->scssCacher->process(\OC::$SERVERROOT, 'core/css/css-variables.scss', 'core');
+
+		
+		return new DataResponse([
+				'result' => true,
+				'message' => 'update style sheet Successful.'
+			   ]);
+	}
+
+
+	/**
+     *
+	 * @PublicPage 
+	 * @NoAdminRequired
+	 * @NoCSRFRequired
+     *
+	 * @return DataResponse
+	 * @throws NotPermittedException
+	 */
+	public function uploadImage(): DataResponse {
+		// logo / background
+		// new: favicon logo-header
+		//
+		$key = $this->request->getParam('key');
+		$image = $this->request->getUploadedFile('image');
+		$error = null;
+		$phpFileUploadErrors = [
+			UPLOAD_ERR_OK => 'The file was uploaded',
+			UPLOAD_ERR_INI_SIZE => 'The uploaded file exceeds the upload_max_filesize directive in php.ini',
+			UPLOAD_ERR_FORM_SIZE => 'The uploaded file exceeds the MAX_FILE_SIZE directive that was specified in the HTML form',
+			UPLOAD_ERR_PARTIAL => 'The file was only partially uploaded',
+			UPLOAD_ERR_NO_FILE => 'No file was uploaded',
+			UPLOAD_ERR_NO_TMP_DIR => 'Missing a temporary folder',
+			UPLOAD_ERR_CANT_WRITE => 'Could not write file to disk',
+			UPLOAD_ERR_EXTENSION => 'A PHP extension stopped the file upload',
+		];
+		if (empty($image)) {
+			$error = 'No file uploaded';
+		}
+		if (!empty($image) && array_key_exists('error', $image) && $image['error'] !== UPLOAD_ERR_OK) {
+			$error = $phpFileUploadErrors[$image['error']];
+		}
+
+		if ($error !== null) {
+			return new DataResponse(
+				[
+					'result' => false,
+					'message' => $error
+				],
+				Http::STATUS_UNPROCESSABLE_ENTITY
+			);
+		}
+
+		$name = '';
+		try {
+			$folder = $this->appData->getFolder('images');
+		} catch (NotFoundException $e) {
+			$folder = $this->appData->newFolder('images');
+		}
+
+		$this->imageManager->delete($key);
+
+		$target = $folder->newFile($key);
+		$supportedFormats = $this->getSupportedUploadImageFormats($key);
+		$detectedMimeType = mime_content_type($image['tmp_name']);
+		if (!in_array($image['type'], $supportedFormats) || !in_array($detectedMimeType, $supportedFormats)) {
+			return new DataResponse(
+				[
+					'result' => false,						
+					'message' => 'Unsupported image type',
+
+				],
+				Http::STATUS_UNPROCESSABLE_ENTITY
+			);
+		}
+
+		$resizeKeys = ['background'];
+		if (in_array($key, $resizeKeys, true)) {
+			// Optimize the image since some people may upload images that will be
+			// either to big or are not progressive rendering.
+			$newImage = @imagecreatefromstring(file_get_contents($image['tmp_name'], 'r'));
+
+			$tmpFile = $this->tempManager->getTemporaryFile();
+			$newWidth = imagesx($newImage) < 4096 ? imagesx($newImage) : 4096;
+			$newHeight = imagesy($newImage) / (imagesx($newImage) / $newWidth);
+			$outputImage = imagescale($newImage, $newWidth, $newHeight);
+
+			imageinterlace($outputImage, 1);
+			imagejpeg($outputImage, $tmpFile, 75);
+			imagedestroy($outputImage);
+
+			$target->putContent(file_get_contents($tmpFile, 'r'));
+		} else {
+			$target->putContent(file_get_contents($image['tmp_name'], 'r'));
+		}
+		$name = $image['name'];
+
+		$this->themingDefaults->set($key.'Mime', $image['type']);
+
+		$cssCached = $this->scssCacher->process(\OC::$SERVERROOT, 'core/css/css-variables.scss', 'core');
+
+		return new DataResponse(
+			[
+				'result' => true,
+				'message' => 'upload image('.$name.') Successful.'
+			]
+		);
+	}
+
+
+
+	/**
+	 * Returns a list of supported mime types for image uploads.
+	 * "favicon" images are only allowed to be SVG when imagemagick with SVG support is available.
+	 *
+	 * @param string $key The image key, e.g. "favicon"
+	 * @return array
+	 */
+	private function getSupportedUploadImageFormats(string $key): array {
+		$supportedFormats = ['image/jpeg', 'image/png', 'image/gif',];
+
+		if ($key !== 'favicon' || $this->imageManager->shouldReplaceIcons() === true) {
+			$supportedFormats[] = 'image/svg+xml';
+			$supportedFormats[] = 'image/svg';
+		}
+
+		return $supportedFormats;
+	}
 
     
 }

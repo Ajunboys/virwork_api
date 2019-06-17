@@ -28,7 +28,7 @@
         <authentication/>
     </types>
 
-    <category>integration</category>
+    <category>authentication</category>
     
     <bugs>https://github.com/Ajunboys/virwork_api/issues</bugs>
     <dependencies>

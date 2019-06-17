@@ -24,20 +24,6 @@ use OC\Settings\Mailer\NewUserMailHelper;
 use OCA\Provisioning_API\FederatedFileSharingFactory;
 
 
-use OCA\Virwork_API\Db\VirworkAuth;
-use OCA\Virwork_API\Db\VirworkAuthMapper;
-use OCA\Virwork_API\Db\VirworkAuthGroupAccess;
-use OCA\Virwork_API\Db\VirworkAuthGroupAccessMapper;
-
-use OCA\Virwork_API\Db\VirworkRoleAuth;
-use OCA\Virwork_API\Db\VirworkRoleAuthMapper;
-
-use OCA\Virwork_API\Db\VirworkUserRoleAuth;
-use OCA\Virwork_API\Db\VirworkUserRoleAuthMapper;
-
-use OCA\Virwork_API\Exceptions\VirworkAuthGroupAccessNotFoundException;
-use OCA\Virwork_API\Exceptions\VirworkAuthNotFoundException;
-
 use OCP\IConfig;
 use OCP\IGroup;
 use OCP\IGroupManager;
@@ -76,16 +62,7 @@ class VirworkNotificationController extends Controller {
 	protected $groupManager;
 	/** @var AccountManager */
 	protected $accountManager;
-	/** @var VirworkAuthMapper */
-	protected $virworkAuthMapper;
-	/** @var VirworkAuthGroupAccessMapper */
-	protected $virworkAuthGroupAccessMapper;
-
-	/** @var VirworkUserRoleAuthMapper */
-	protected $virworkUserRoleAuthMapper;
-
-	/** @var VirworkRoleAuthMapper */
-	protected $virworkRoleAuthMapper;
+	
 
 	/** @var appName */
 	protected $appName;
@@ -111,10 +88,6 @@ class VirworkNotificationController extends Controller {
 	 * @param NewUserMailHelper $newUserMailHelper
 	 * @param FederatedFileSharingFactory $federatedFileSharingFactory
 	 * @param ISecureRandom $secureRandom
-	 * @param VirworkAuthMapper $virworkAuthMapper
-	 * @param VirworkAuthGroupAccessMapper $virworkAuthGroupAccessMapper
-	 * @param VirworkUserRoleAuthMapper $virworkUserRoleAuthMapper
-	 * @param VirworkRoleAuthMapper $virworkRoleAuthMapper
 	 *
 	 */
 	public function __construct($appName, 
@@ -129,11 +102,7 @@ class VirworkNotificationController extends Controller {
 		IFactory $l10nFactory,
 		NewUserMailHelper $newUserMailHelper,
 		FederatedFileSharingFactory $federatedFileSharingFactory,
-		ISecureRandom $secureRandom,
-		VirworkAuthMapper $virworkAuthMapper,
-		VirworkAuthGroupAccessMapper $virworkAuthGroupAccessMapper,
-	    VirworkUserRoleAuthMapper $virworkUserRoleAuthMapper,
-		VirworkRoleAuthMapper $virworkRoleAuthMapper){
+		ISecureRandom $secureRandom){
 
 		parent::__construct($appName, $request);
         
@@ -149,12 +118,6 @@ class VirworkNotificationController extends Controller {
 		$this->groupManager = $groupManager;
 		$this->userSession = $userSession;
 		$this->accountManager = $accountManager;
-		$this->virworkAuthMapper = $virworkAuthMapper;
-		$this->virworkAuthGroupAccessMapper = $virworkAuthGroupAccessMapper;
-
-		$this->virworkUserRoleAuthMapper = $virworkUserRoleAuthMapper;
-
-		$this->virworkRoleAuthMapper = $virworkRoleAuthMapper;
 	}
     /**
       * @NoAdminRequired

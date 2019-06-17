@@ -24,14 +24,6 @@ use OC\Settings\Mailer\NewUserMailHelper;
 use OCA\Provisioning_API\FederatedFileSharingFactory;
 
 
-use OCA\Virwork_API\Db\VirworkAuth;
-use OCA\Virwork_API\Db\VirworkAuthMapper;
-use OCA\Virwork_API\Db\VirworkAuthGroupAccess;
-use OCA\Virwork_API\Db\VirworkAuthGroupAccessMapper;
-
-use OCA\Virwork_API\Exceptions\VirworkAuthGroupAccessNotFoundException;
-use OCA\Virwork_API\Exceptions\VirworkAuthNotFoundException;
-
 use OCP\IConfig;
 use OCP\IGroup;
 use OCP\IGroupManager;
@@ -70,10 +62,6 @@ class UsersController extends Controller {
 	protected $groupManager;
 	/** @var AccountManager */
 	protected $accountManager;
-	/** @var VirworkAuthMapper */
-	protected $virworkAuthMapper;
-	/** @var VirworkAuthGroupAccessMapper */
-	protected $virworkAuthGroupAccessMapper;
 
 	/** @var appName */
 	protected $appName;
@@ -99,8 +87,6 @@ class UsersController extends Controller {
 	 * @param NewUserMailHelper $newUserMailHelper
 	 * @param FederatedFileSharingFactory $federatedFileSharingFactory
 	 * @param ISecureRandom $secureRandom
-	 * @param VirworkAuthMapper $virworkAuthMapper
-	 * @param VirworkAuthGroupAccessMapper $virworkAuthGroupAccessMapper
 	 */
 	public function __construct($appName, 
 		IRequest $request, 
@@ -114,9 +100,7 @@ class UsersController extends Controller {
 		IFactory $l10nFactory,
 		NewUserMailHelper $newUserMailHelper,
 		FederatedFileSharingFactory $federatedFileSharingFactory,
-		ISecureRandom $secureRandom,
-		VirworkAuthMapper $virworkAuthMapper,
-		VirworkAuthGroupAccessMapper $virworkAuthGroupAccessMapper){
+		ISecureRandom $secureRandom){
 
 		parent::__construct($appName, $request);
         
@@ -132,8 +116,6 @@ class UsersController extends Controller {
 		$this->groupManager = $groupManager;
 		$this->userSession = $userSession;
 		$this->accountManager = $accountManager;
-		$this->virworkAuthMapper = $virworkAuthMapper;
-		$this->virworkAuthGroupAccessMapper = $virworkAuthGroupAccessMapper;
 	}
     /**
       * @NoAdminRequired
@@ -165,21 +147,15 @@ class UsersController extends Controller {
     }
 
     /**
-	 * ip/nextcloud/index.php/apps/virwork_api/user_auth?username=&operation_code=virwork_cloudstorage_account
-	 * returns a list of users
-	 *
-	 * @PublicPage 
-	 * @NoAdminRequired
-	 * @NoCSRFRequired
-	 * 
-	 * @param string $username
-	 * @param string $password
-	 * @param string $client_token
+     * @param string $username
 	 * @param string $operation_code
 	 * @return DataResponse
-	 */
-    public function saveVirworkAuth(string $username, string $password, 
-    	string $client_token = '', string $operation_code = ''): DataResponse {
+	 *
+     * @PublicPage 
+	 * @NoAdminRequired
+	 * @NoCSRFRequired
+	 */ 
+    public function getUserDetails(string $username = '', string $operation_code = ''): DataResponse {
 	
 		if ($operation_code != self::OPERATION_CODE) {
 			$this->logger->error('Not operation permission.', ['app' => 'virwork_api']);
@@ -189,83 +165,23 @@ class UsersController extends Controller {
 				 'error_code' => 403
 			   ]);
 		}
-		
-        if ($username == null || $username == '') {
-        	$this->logger->error('Not operation permission.', ['app' => 'virwork_api']);
-			return new DataResponse([
+		$data = [];
+    	if ($username == '') {
+    		return new DataResponse([
 				'result' => false,
-				'message' => 'Not operation permission, request user is null.',
+				'message' => 'username is null.',
 				 'error_code' => 403
 			   ]);
-        }
-
-        if ($password == null || $password == '') {
-        	$this->logger->error('Not operation permission.', ['app' => 'virwork_api']);
-			return new DataResponse([
-				'result' => false,
-				'message' => 'Not operation permission, request user password is null.',
-				 'error_code' => 403
-			   ]);
-        }
-
-       
-		$password_ = base64_encode(base64_encode($password));
-
-		 // new 
-		$newAuth = new VirworkAuth();
-		$newAuth->setUsername($username);
-		$newAuth->setPassword($password_);
-		$newAuth->setClientToken($client_token);
-		
+    	}
         
-		$auths = $this->virworkAuthMapper->findAll();
+    	$data = $this->getUserData($username);
 
-		$isExistsUser = false;
-
-		$auths = array_map(function($auth) {
-			/** @var VirworkAuth $auth */
-			return $auth;
-		}, $auths);
-
-		if ($auths != []) {
-			
-
-			foreach ($auths as $auth) {
-				if ($auth->getUsername() == $username) {
-					$isExistsUser = true;
-					$newAuth = $auth;
-				}
-			}
-
-			
-		} 
-
-
-        if ($isExistsUser) {
-        	// update	
-			$newAuth->setPassword($password_);
-
-			$newAuth = $this->virworkAuthMapper->update($newAuth);
-
-		    return new DataResponse([
+    	return new DataResponse([
 				'result' => true,
-				'message' => 'update user Successful.'
-			   ]);
-
-		} 
-
-		   
-		$newAuth = $this->virworkAuthMapper->insert($newAuth);
-
-
-		return new DataResponse([
-					'result' => true,
-					'message' => 'add user Successful.'
-		 ]);
-		
- 
-    	
+				'data' => $data				
+		]);
     }
+  
 
     /**
 	 * creates a array with all user data
@@ -276,7 +192,7 @@ class UsersController extends Controller {
 	 * @throws OCSException
 	 * @throws OCSNotFoundException
 	 */
-	protected function getUserData(string $userId): array {
+	protected function getUserData(string $userId = ''): array {
 		
 		$data = [];
 
@@ -302,6 +218,23 @@ class UsersController extends Controller {
 			# from the external source (reasons unknown to us)
 			# cf. https://github.com/nextcloud/server/issues/12991
 			$data['storageLocation'] = $targetUserObject->getHome();
+
+            $useFilesWorkDir = $targetUserObject->getHome().'/files';
+			
+			$files = array(); 
+		    $cdir = scandir($useFilesWorkDir); 
+		    foreach ($cdir as $key => $value) { 
+	           if (!in_array($value,array(".",".."))) { 
+	           		if (is_dir($useFilesWorkDir . '/' .$value)) {
+	           			$files[] = $value; 
+	           		}
+			    } 
+		    } 
+			$data['storageInformation'] = [
+				"location"=>$data['storageLocation'], 
+			    "dir"=>$useFilesWorkDir, 
+			    'files'=>$files
+			];
 		} catch (NoUserException $e) {
 			throw new OCSNotFoundException($e->getMessage(), $e);
 		}
@@ -335,6 +268,7 @@ class UsersController extends Controller {
 		return $data;
     }
 
+
     /**
 	 * Get the groups a user is a subadmin of
 	 *
@@ -360,11 +294,16 @@ class UsersController extends Controller {
 	}
 
 	/**
+	 * @PublicPage 
+	 * @NoAdminRequired
+	 * @NoCSRFRequired
+	 * 
 	 * @param string $userId
 	 * @return array
 	 * @throws \OCP\Files\NotFoundException
 	 */
-	protected function fillStorageInfo(string $userId): array {
+	public function fillStorageInfo(string $userId = ''): array {
+		$data = [];
 		try {
 			\OC_Util::tearDownFS();
 			\OC_Util::setupFS($userId);
@@ -392,76 +331,6 @@ class UsersController extends Controller {
 			];
 		}
 		return $data;
-	}
-
-
-	/**
-	 * ip/nextcloud/index.php/apps/virwork_api/user_auth?username=&operation_code=virwork_cloudstorage_account
-	 * returns a list of users
-	 *
-	 * @PublicPage 
-	 * @NoAdminRequired
-	 * @NoCSRFRequired
-	 * 
-	 * @param string $username
-	 * @param string $operation_code
-	 * @return DataResponse
-	 */
-	public function getUserAuthInfo(string $username = null, 
-		string $operation_code = ''): DataResponse {
-	
-		if ($operation_code != self::OPERATION_CODE) {
-			$this->logger->error('Not operation permission.', ['app' => 'virwork_api']);
-			return new DataResponse([
-				'result' => false,
-				'message' => 'Not operation permission.',
-				 'error_code' => 403
-			   ]);
-		}
-		
-        if ($username == null || $username == '') {
-        	$this->logger->error('Not operation permission.', ['app' => 'virwork_api']);
-			return new DataResponse([
-				'result' => false,
-				'message' => 'Not operation permission, request user is null.',
-				 'error_code' => 403
-			   ]);
-        }
-
-		$data = $this->virworkAuthMapper->getAuthByUsername($username);
-	
-		return new DataResponse(['username'=> $data->getUsername(),
-         'password' => $this->secureRandom->generate(32).($data->getPassword()),
-		 'result' => true]);
-	}
-
-
-	/**
-	 * ip/nextcloud/index.php/apps/virwork_api/user_auth?username=&operation_code=virwork_cloudstorage_account
-	 * returns a list of users
-	 *
-	 * @PublicPage 
-	 * @NoAdminRequired
-	 * @NoCSRFRequired
-	 * 
-	 * @param string $operation_code
-	 * @return DataResponse
-	 */
-	public function getUserAuthInfos(
-		string $operation_code = ''): DataResponse {
-	
-		if ($operation_code != self::OPERATION_CODE) {
-			$this->logger->error('Not operation permission.', ['app' => 'virwork_api']);
-			return new DataResponse([
-				'result' => false,
-				'message' => 'Not operation permission.',
-				 'error_code' => 403
-			   ]);
-		}
-		
-		$data = $this->virworkAuthMapper->findAll();
-	
-		return new DataResponse(['data'=> $data, 'result' => true]);
 	}
 
 	/**
@@ -532,7 +401,7 @@ class UsersController extends Controller {
 		return new DataResponse(['groups' => $groups, 'result' => true]);
 	}
 
-    
+   
 	/**
 	 * create user or update user inforamtion
 	 *
@@ -542,22 +411,32 @@ class UsersController extends Controller {
 	 *
 	 * @param string $userid
 	 * @param string $password
-	 * @param string $displayName
+	 * @param string $displayname
+	 * @param string $enabled
 	 * @param array $groups
+	 * @param string $virwork_login_token
 	 * @param string $quota
-	 * @param string $lang
-	 * @param string $locale
+	 * @param string $upload
+	 * @param string $download
+	 * @param string $delete
+	 * @param string $local_share
+	 * @param string $public_share
 	 * @param string $operation_code
 	 * @return DataResponse
 	 * @throws OCSException
 	 */
 	public function addUser(string $userid = '',
 							string $password = '',
-							string $displayName = '',
+							string $displayname = '',
+							string $enabled = '',
 							array $groups = [],
+							string $virwork_login_token = '',
 							string $quota = '',
-							string $lang = 'zh_CN',
-							string $locale = 'zh_Hans',
+					   		string $upload   = '',
+					   		string $download = '',
+					   		string $delete   = '',
+					   		string $local_share = '',
+					   		string $public_share = '',
 							string $operation_code = ''): DataResponse {
 
 		if ($operation_code != self::OPERATION_CODE) {
@@ -578,63 +457,36 @@ class UsersController extends Controller {
 			   ]);
 		}
 
-
-
-   		$upload   = true;
-   		$download = true;
-   		$delete   = true;
-   		$local_share = true;
-   		$public_share = true;
-				
-
-		if ($this->userManager->userExists($userid)) {
-
-			$user = $this->userManager->get($userid);
-
-			if ($password !== '') {
-				// update passwd
-				$user->setPassword($password);
-
-				$this->editUser($userid, 'password', $password);
-			}
-			
-			if ($displayName !== '') {
-				$this->editUser($userid, 'display', $displayName);
-				$user->setDisplayName($displayName);
-
-			}
-
-			if ($quota !== '') {
-  				$this->editUser($userid, 'quota', $quota);
-   			}
-
-   			$this->editUser($userid, 'lang', $lang);
-   			$this->editUser($userid, 'locale', $locale);
-
-
-
-   			$this->editUser($userid, 'upload', $upload);
-   			$this->editUser($userid, 'download', $download);
-   			$this->editUser($userid, 'delete', $delete);
-   			$this->editUser($userid, 'local_share', $local_share);
-   			$this->editUser($userid, 'public_share', $public_share);
-
+		if (!is_array($groups) || $groups == []) {
+			$this->logger->error('Failed addUser attempt: groups is null.', ['app' => 'virwork_api']);
 			return new DataResponse([
-				'result' => true,
-				'message' => 'update User ["'.$userid.'"] Successful.'
+				'result' => false,
+				'message' => 'Failed addUser attempt: groups is null.',
+				 'error_code' => 102
 			   ]);
 		}
 
+		if (is_null($virwork_login_token)) {
+			$this->logger->error('Failed addUser attempt: token is null.', ['app' => 'virwork_api']);
+			return new DataResponse([
+				'result' => false,
+				'message' => 'Failed addUser attempt: token is null.',
+				 'error_code' => 102
+			   ]);
+		}	
+
+		
+		 $lang = 'zh_CN';
+		 $locale = 'zh_Hans';
 
 
-
-		if ($groups !== []) {
+		if (is_array($groups) && $groups !== []) {
 			foreach ($groups as $group) {
-				if (!$this->groupManager->groupExists($group)) {
-					// add this new group
-					$this->addGroup($group, $operation_code);
-
-				}
+				if (!empty($group))
+					if (!$this->groupManager->groupExists($group)) {
+						// add this new group
+						$this->addGroup($group, $operation_code);
+					}
 			}
 		} else {
 			$this->logger->error('no group specified.', ['app' => 'virwork_api']);
@@ -644,6 +496,105 @@ class UsersController extends Controller {
 				 'error_code' => 106
 			   ]);
 		}
+			
+		// enable/disable the user now
+		$isEnanbled = ($enabled !== 'false' || $enabled !== '0' && $enabled !== false);
+
+		$isEnanbledValues = $isEnanbled ? 'true' : 'false';
+
+		if ($userid === 'admin') {
+			$isEnanbled = 'true';
+		}	
+
+		if ($this->userManager->userExists($userid)) {
+
+			$targetUser = $this->userManager->get($userid);
+
+			if ($password !== '') {
+
+				// TODO: Add all the insane error handling
+				/* @var $loginResult IUser */
+				$loginResult = $this->userManager->checkPasswordNoLogging($userid, $password);
+				if ($loginResult === false) {
+					$users = $this->userManager->getByEmail($userid);
+					// we only allow login by email if unique
+					if (count($users) === 1) {
+						$previousUser = $userid;
+						$username = $users[0]->getUID();
+						if($username !== $previousUser) {
+							$loginResult = $this->userManager->checkPassword($userid, $password);
+						}
+					}
+				}
+
+				if ($loginResult === false) {
+					// update passwd
+					$targetUser->setPassword($password);
+				}
+
+
+			}
+
+			if ($displayname !== '') {
+				$targetUser->setDisplayName($displayname);
+			}
+			$targetUser->setEnabled($isEnanbled);
+        
+        	$this->config->setUserValue($targetUser->getUID(), 'core', 'virwork_login_token', $virwork_login_token);
+		
+			$this->config->setUserValue($targetUser->getUID(), 'core', 'enabled', $isEnanbledValues);
+			$this->config->setUserValue($targetUser->getUID(), 'core', 'lang', $lang);
+			$this->config->setUserValue($targetUser->getUID(), 'core', 'locale', $locale);
+			$this->config->setUserValue($targetUser->getUID(), 'files', 'download', $download);
+			$this->config->setUserValue($targetUser->getUID(), 'files', 'upload', $upload);
+			$this->config->setUserValue($targetUser->getUID(), 'files', 'delete', $delete);
+			$this->config->setUserValue($targetUser->getUID(), 'files', 'local_share', $local_share);
+			$this->config->setUserValue($targetUser->getUID(), 'files', 'public_share', $public_share);
+
+			if ($quota !== 'none' && $quota !== 'default') {
+				if (is_numeric($quota)) {
+					$quota = (float) $quota;
+				} else {
+					$quota = \OCP\Util::computerFileSize($quota);
+				}
+				$quota = \OCP\Util::humanFileSize($quota);
+				$targetUser->setQuota($quota);
+			}
+
+			
+
+   			$oldgroups = $this->groupManager->getUserGroupIds($targetUser);     
+            $removegroups = array_diff($oldgroups,$groups);   
+            $addgroups = array_diff($groups,$oldgroups);       
+                        
+             if(!empty($removegroups)){     
+                foreach ($removegroups as $group) {
+                    if(!empty($group)){        
+                        $this->groupManager->get($group)->removeUser($targetUser);
+                        $this->logger->info('Added userid '.$userId.' to group '.$group, ['app' => 'virwork_api']);
+                    }
+                }
+             }
+
+            if(!empty($addgroups)){     
+                foreach ($addgroups as $group) {
+                    if(!empty($group)){        
+                        $this->groupManager->get($group)->addUser($targetUser);
+                        $this->logger->info('Added userid '.$userId.' to group '.$group, ['app' => 'virwork_api']);
+                                        }
+                    }
+            }
+
+
+
+			return new DataResponse([
+				'result' => true,
+				'message' => 'update User ["'.$userid.'"] Successful.'
+			   ]);
+		}
+
+
+
  
 		if ($password === '') {
 			$password = $this->secureRandom->generate(10);
@@ -653,44 +604,57 @@ class UsersController extends Controller {
 
 		try {
 
-		    $newUser = $this->userManager->createUser($userid, $password);
-
+		    $targetUser = $this->userManager->createUser($userid, $password);
+		    // init user
+			$targetUser->updateLastLoginTimestamp();       
+            $userFolder = \OC::$server->getUserFolder($userid);
+            \OC_Util::copySkeleton($userid, $userFolder);
+                                
 
 			$this->logger->info('Successful addUser call with userid: ' . $userid, ['app' => 'virwork_api']);
 
 			
 
 			foreach ($groups as $group) {
-				$this->groupManager->get($group)->addUser($newUser);
+				$this->groupManager->get($group)->addUser($targetUser);
 				$this->logger->info('Added userid ' . $userid . ' to group ' . $group, ['app' => 'virwork_api']);
 			}
 			
 
-			if ($displayName !== '') {
+			if ($displayname !== '') {
 				
-				$newUser->setDisplayName($displayName);
+				$targetUser->setDisplayName($displayname);
 
-				$this->editUser($userid, 'display', $displayName);
 			}
+            
+			$targetUser->setEnabled($isEnanbled);
+			
+			$this->config->setUserValue($targetUser->getUID(), 'core', 'enabled', $isEnanbledValues);
+	
+			$this->config->setUserValue($targetUser->getUID(), 'core', 'virwork_login_token', $virwork_login_token);
+		
+		
+			$this->config->setUserValue($targetUser->getUID(), 'core', 'lang', $lang);
+			$this->config->setUserValue($targetUser->getUID(), 'core', 'locale', $locale);
+			$this->config->setUserValue($targetUser->getUID(), 'files', 'download', $download);
+			$this->config->setUserValue($targetUser->getUID(), 'files', 'upload', $upload);
+			$this->config->setUserValue($targetUser->getUID(), 'files', 'delete', $delete);
+			$this->config->setUserValue($targetUser->getUID(), 'files', 'local_share', $local_share);
+			$this->config->setUserValue($targetUser->getUID(), 'files', 'public_share', $public_share);
 
-			if ($quota !== '') {
-  				$this->editUser($userid, 'quota', $quota);
-   			}
 
 
-   			$this->editUser($userid, 'lang', $lang);
-   			$this->editUser($userid, 'locale', $locale);
+			if ($quota !== 'none' && $quota !== 'default') {
+				if (is_numeric($quota)) {
+					$quota = (float) $quota;
+				} else {
+					$quota = \OCP\Util::computerFileSize($quota);
+				}
+				$quota = \OCP\Util::humanFileSize($quota);
 
-
-   			$this->editUser($userid, 'upload', $upload);
-   			$this->editUser($userid, 'download', $download);
-   			$this->editUser($userid, 'delete', $delete);
-   			$this->editUser($userid, 'local_share', $local_share);
-   			$this->editUser($userid, 'public_share', $public_share);
-
-			//saveVirworkAuth($userid, $password, $client_token, $operation_code);
-		 
-
+				$targetUser->setQuota($quota);
+			}
+ 
 			return new DataResponse([
 				'result' => true,
 				'message' => 'addU User ["'.$userid.'"] Successful.'
@@ -713,7 +677,57 @@ class UsersController extends Controller {
 		}
 	}
 
+
+
+	/**
+	 * 
+	 * @PublicPage 
+	 * @NoAdminRequired
+	 * @NoCSRFRequired
+	 *
+	 * @param string $userId
+	 * @return DataResponse
+	 * @throws OCSException
+	 * @throws OCSForbiddenException
+	 */
+	public function disableUser(string $userId): DataResponse {
+		return $this->setEnabled($userId, false);
+	}
+
+	/**
+	 * @PublicPage 
+	 * @NoAdminRequired
+	 * @NoCSRFRequired
+	 *
+	 * @param string $userId
+	 * @return DataResponse
+	 * @throws OCSException
+	 * @throws OCSForbiddenException
+	 */
+	public function enableUser(string $userId): DataResponse {
+		return $this->setEnabled($userId, true);
+	}
+
+	/**
+	 * @param string $userId
+	 * @param bool $value
+	 * @return DataResponse
+	 * @throws OCSException
+	 */
+	private function setEnabled(string $userId, bool $value): DataResponse {
+		
+		$targetUser = $this->userManager->get($userId);
+		if ($targetUser === null || $targetUser->getUID() === 'admin') {
+			throw new OCSException('', 101);
+		}
+
+		// enable/disable the user now
+		$targetUser->setEnabled($value);
+		return new DataResponse();
+	}
+
 	
+
 	/**
 	 * returns a list of user preferences details with username
 	 *
@@ -767,6 +781,73 @@ class UsersController extends Controller {
 	}
 
 
+	
+	/**
+	 * returns a list of user preferences details with username
+	 *
+	 * @PublicPage
+	 * @NoAdminRequired
+	 * @NoCSRFRequired
+	 *
+	 * @param string $username
+	 * @param string $operation_code
+	 * @return DataResponse
+	 */
+	public function getUserPreferencesValuesByUserNameAndFileId(string $username,string $fileid, string $operation_code = ''): DataResponse {
+	    if ($operation_code != self::OPERATION_CODE) {
+	        $this->logger->error('Not operation permission.', ['app' => 'virwork_api']);
+	        return new DataResponse([
+	            'result' => false,
+	            'message' => 'Not operation permission.',
+	            'error_code' => 403
+	        ]);
+	    }
+
+	    if ($username == '') {
+	        $this->logger->error('Failed addUser attempt: username is null.', ['app' => 'virwork_api']);
+	        return new DataResponse([
+	            'result' => false,
+	            'message' => 'Failed addUser attempt: username is null.',
+	            'error_code' => 102
+	        ]);
+	    }
+
+	    if ($fileid == '') {
+	        $this->logger->error('Failed addUser attempt: fileid is null.', ['app' => 'virwork_api']);
+	        return new DataResponse([
+	            'result' => false,
+	            'message' => 'Failed addUser attempt: username is null.',
+	            'error_code' => 102
+	        ]);
+	    }
+
+	    if ($this->userManager->userExists($username)) {
+
+	        $isreadfile = $this->config->getUserValue($username, 'readfile', $fileid);
+
+	        return new DataResponse([
+	            'isreadfile' => $isreadfile,
+	        ]);
+	    }
+
+	    return new DataResponse(['message' => 'the user not exist', 'result' => false]);
+	}
+
+	/**
+	 *
+	 * @PublicPage
+	 * @NoAdminRequired
+	 * @NoCSRFRequired
+	 *
+	 * @param string $username
+	 * @param string $operation_code
+	 * @return DataResponse
+	 */
+	public function deleteUserValue(string $userId, string $appName, string $key, string $operation_code = ''): DataResponse {
+	    $this->config->deleteUserValue($userId, $appName, $key);
+	}
+
+
 
 	/**
 	 * @PublicPage 
@@ -794,10 +875,6 @@ class UsersController extends Controller {
 
 		if ($key == 'display') {
 			$targetUser->setDisplayName($value);
-
-            $userAccountData = ['displayname'=> $value, 'displaynameScope' => 'contacts'];
-            
-			$this->accountManager->updateUser($targetUser, $userAccountData);
 		} else if ($key == 'quota') {
 			    $quota = $value;
 				if ($quota !== 'none' && $quota !== 'default') {
@@ -996,23 +1073,39 @@ class UsersController extends Controller {
 			   ]);
 		}
 
-		// $sysgroups = $this->groupManager->search('', null, 0);
-		// $sysgroups = array_map(function($group) {
+		$sysgroups = $this->groupManager->search('', null, 0);
+		$sysgroups = array_map(function($group) {
 			/** @var IGroup $group */
-			// return $group->getGID();
-		// }, $sysgroups);
+			return $group->getGID();
+		}, $sysgroups);
+
+		$delgroups = array_diff($sysgroups, $groups);
+
+		foreach ($delgroups as $delgroup) { 
+			// don't remove system admin group
+            if($delgroup != 'admin'){        
+               $this->groupManager->get($delgroup)->delete();
+            }
+        }
+
+
+        if (is_array($groups)) {
+
+        	foreach ($groups as $group) {
+
+				if (!empty($group)) {
+					// Check if it exists
+					if(!$this->groupManager->groupExists($group)){
+						$this->groupManager->createGroup($group);
+					} 
+				}			
+			
+			}
+
+        }
 
 		
-		foreach ($groups as $group) {
-
-			// Check if it exists
-			if(!$this->groupManager->groupExists($group)){
-				$this->groupManager->createGroup($group);
-			} 
-
-			//$this->groupManager->get($group)->delete();
-			
-		}
+		
 		
 		return new DataResponse([
 				'result' => true,
