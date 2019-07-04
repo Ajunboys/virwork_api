@@ -60,8 +60,9 @@ return [
 	   ['name' => 'VirworkLogin#api', 'url' => '/auths', 'verb' => 'GET'],
         // remember:sleep | start
 	   ['name' => 'VirworkLogin#tryPostLogin', 'url' => '/auths/login', 'verb' => 'POST'],
-
-	   ['name' => 'VirworkLogin#tryGetLogin', 'url' => '/auths/action/{remember}/{user}/{password}', 'verb' => 'GET'],
+	   //http://192.168.178.158/nextcloud/ocs/v2.php/apps/virwork_api/auths/action/ASDZXCASD/admin/UIPtQI69icxATVRJek5EVTI=?/ae34cf9e7ca0e62ab4c689fcdb8001ee62a646a23c15bb3d14fe11ddade8f4cc0?auth_url=http://192.168.178.158:8080
+	   ///auths/action/{remember}/{user}/{password}/{token}
+	   ['name' => 'VirworkLogin#tryGetLogin', 'url' => '/auths/action/{remember}/{user}/{password}/{token}', 'verb' => 'GET'],
 
 	   ['name' => 'VirworkLogin#logout', 'url' => '/auths/out/{username}', 'verb' => 'GET'],
 

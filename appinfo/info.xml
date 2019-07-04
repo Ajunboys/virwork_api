@@ -33,7 +33,7 @@
     <bugs>https://github.com/Ajunboys/virwork_api/issues</bugs>
     <dependencies>
         <database min-version="5.5">mysql</database>
-        <nextcloud min-version="13" max-version="15"/>
+        <nextcloud min-version="13" max-version="16"/>
     </dependencies>
 
     <settings>

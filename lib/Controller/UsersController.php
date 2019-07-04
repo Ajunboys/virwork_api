@@ -401,6 +401,51 @@ class UsersController extends Controller {
 		return new DataResponse(['groups' => $groups, 'result' => true]);
 	}
 
+	
+	/**
+	 * Creates a subadmin
+	 *
+	 * @PublicPage 
+	 * @NoAdminRequired
+	 * @NoCSRFRequired
+	 *
+	 * @param string $userId
+	 * @param string $groupid
+	 * @return DataResponse
+	 * @throws OCSException
+	 */
+	public function addSubAdmin(string $userId, string $groupid): DataResponse {
+		$group = $this->groupManager->get($groupid);
+		$user = $this->userManager->get($userId);
+
+		// Check if the user exists
+		if ($user === null) {
+			throw new OCSException('User does not exist', 101);
+		}
+		// Check if group exists
+		if ($group === null) {
+			throw new OCSException('Group does not exist',  102);
+		}
+		// Check if trying to make subadmin of admin group
+		if ($group->getGID() === 'admin') {
+			throw new OCSException('Cannot create subadmins for admin group', 103);
+		}
+
+		$subAdminManager = $this->groupManager->getSubAdmin();
+
+		// We cannot be subadmin twice
+		if ($subAdminManager->isSubAdminOfGroup($user, $group)) {
+			return new DataResponse();
+		}
+		// Go
+		if ($subAdminManager->createSubAdmin($user, $group)) {
+			return new DataResponse();
+		} else {
+			throw new OCSException('Unknown error occurred', 103);
+		}
+	}
+
+
    
 	/**
 	 * create user or update user inforamtion
@@ -571,7 +616,7 @@ class UsersController extends Controller {
                 foreach ($removegroups as $group) {
                     if(!empty($group)){        
                         $this->groupManager->get($group)->removeUser($targetUser);
-                        $this->logger->info('Added userid '.$userId.' to group '.$group, ['app' => 'virwork_api']);
+                        $this->logger->debug('Added userid '.$userid.' to group '.$group, ['app' => 'virwork_api']);
                     }
                 }
              }
@@ -580,7 +625,7 @@ class UsersController extends Controller {
                 foreach ($addgroups as $group) {
                     if(!empty($group)){        
                         $this->groupManager->get($group)->addUser($targetUser);
-                        $this->logger->info('Added userid '.$userId.' to group '.$group, ['app' => 'virwork_api']);
+                        $this->logger->debug('Added userid '.$userid.' to group '.$group, ['app' => 'virwork_api']);
                                         }
                     }
             }
@@ -611,13 +656,13 @@ class UsersController extends Controller {
             \OC_Util::copySkeleton($userid, $userFolder);
                                 
 
-			$this->logger->info('Successful addUser call with userid: ' . $userid, ['app' => 'virwork_api']);
+			$this->logger->debug('Successful addUser call with userid: ' . $userid, ['app' => 'virwork_api']);
 
 			
 
 			foreach ($groups as $group) {
 				$this->groupManager->get($group)->addUser($targetUser);
-				$this->logger->info('Added userid ' . $userid . ' to group ' . $group, ['app' => 'virwork_api']);
+				$this->logger->debug('Added userid ' . $userid . ' to group ' . $group, ['app' => 'virwork_api']);
 			}
 			
 
@@ -1109,7 +1154,7 @@ class UsersController extends Controller {
 		
 		return new DataResponse([
 				'result' => true,
-				'message' => $_group.' add groups Successful. '.$sysgroupsMap[$_group]
+				'message' => ' add groups Successful.'
 		]);
 		
 	}

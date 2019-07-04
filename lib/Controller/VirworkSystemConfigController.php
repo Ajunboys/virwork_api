@@ -238,12 +238,38 @@ class VirworkSystemConfigController extends Controller {
 
 		$url = str_replace("/apps/virwork_api/lib/Controller","", $url);
 
+        $apk_version = "20190319";
+        $apk_path = "20190329.apk";
+        $apk_descriptions = "";
+
+		$versionfile = str_replace("/apps/virwork_api/lib/Controller", "", $base_dir) . "/download/virwork_android.version";
+
+		$version_json_data;
+
+		if (file_exists($versionfile)){
+
+			// Read JSON file
+			$version_json = file_get_contents($versionfile);
+
+			//Decode JSON
+			$version_json_data = json_decode($version_json,true);
+
+			$apk_version = $version_json_data[0]["version"];
+			$apk_descriptions = $version_json_data[0]["descriptions"];
+			$apk_path = $version_json_data[0]["path"];
+		}
+
 		return new DataResponse([
 				'result' => true,
 				'data' => [
-					 'version'=>'20190329',
-					 'descriptions'=>'',
-					 'path'=>$url.'/download/20190329.apk',
+					 'version'=>$apk_version,
+					 'descriptions'=>$apk_descriptions,
+					 'path'=>$url.'/download/'.$apk_path,
+					 /*
+					 'base_dir'=>$base_dir,
+					 'version_json_data'=>$version_json_data,
+					 'versionfile'=>$versionfile
+					 */
 				]
 		]);
     }
@@ -260,12 +286,34 @@ class VirworkSystemConfigController extends Controller {
 	 * @return DataResponse
 	 */ 
     public function getIOSVersion(): DataResponse {
+    	$base_dir = __DIR__;
+    	
+        $apk_version = "20190319";
+        $apk_path = "https://itunes.apple.com/cn/app/virwork-app/id516447913?mt=8";
+        $apk_descriptions = "";
+
+		$versionfile = str_replace("/apps/virwork_api/lib/Controller", "", $base_dir) . "/download/virwork_ios.version";
+
+		$version_json_data;
+
+		if (file_exists($versionfile)){
+
+			// Read JSON file
+			$version_json = file_get_contents($versionfile);
+
+			//Decode JSON
+			$version_json_data = json_decode($version_json,true);
+
+			$apk_version = $version_json_data[0]["version"];
+			$apk_descriptions = $version_json_data[0]["descriptions"];
+			$apk_path = $version_json_data[0]["path"];
+		}
 		return new DataResponse([
 				'result' => true,
 				'data' => [
-					 'version'=>'20190329',
-					 'descriptions'=>'',
-					 'path'=>'https://itunes.apple.com/cn/app/virwork-app/id516447913?mt=8'
+					 'version'=>$apk_version,
+					 'descriptions'=>$apk_descriptions,
+					 'path'=>$apk_path
 				]
 		]);
     }

@@ -221,18 +221,91 @@ class VirworkLoginController extends Controller {
 	}
 
 	/**
+	 * 发送HTTP请求
+	 *
+	 * @param string $url 请求地址
+	 * @param string $method 请求方式 GET/POST
+	 * @param string $refererUrl 请求来源地址
+	 * @param array $data 发送数据
+	 * @param string $contentType
+	 * @param string $timeout
+	 * @param string $proxy
+	 * @return boolean
+	 */
+	function send_request($url, $data, $refererUrl = '', $method = 'GET', $contentType = 'application/json', $timeout = 30, $proxy = false) {
+	    $ch = null;
+	    if('POST' === strtoupper($method)) {
+	        $ch = curl_init($url);
+	        curl_setopt($ch, CURLOPT_POST, 1);
+	        curl_setopt($ch, CURLOPT_HEADER,0 );
+	        curl_setopt($ch, CURLOPT_FRESH_CONNECT, 1);
+	        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+	        curl_setopt($ch, CURLOPT_FORBID_REUSE, 1);
+	        curl_setopt($ch, CURLOPT_TIMEOUT, $timeout);
+	        if ($refererUrl) {
+	            curl_setopt($ch, CURLOPT_REFERER, $refererUrl);
+	        }
+	        if($contentType) {
+	            curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type:'.$contentType));
+	        }
+	        if(is_string($data)){
+	            curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
+	        } else {
+	            curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($data));
+	        }
+	    } else if('GET' === strtoupper($method)) {
+	        if(is_string($data)) {
+	            $real_url = $url. (strpos($url, '?') === false ? '?' : ''). $data;
+	        } else {
+	            $real_url = $url. (strpos($url, '?') === false ? '?' : ''). http_build_query($data);
+	        }
+	 
+	        $ch = curl_init($real_url);
+	        curl_setopt($ch, CURLOPT_HEADER, 0);
+	        curl_setopt($ch, CURLOPT_HTTPHEADER, array('Content-Type:'.$contentType));
+	        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+	        curl_setopt($ch, CURLOPT_TIMEOUT, $timeout);
+	        if ($refererUrl) {
+	            curl_setopt($ch, CURLOPT_REFERER, $refererUrl);
+	        }
+	    } else {
+	        $args = func_get_args();
+	        return false;
+	    }
+	 
+	    if($proxy) {
+	        curl_setopt($ch, CURLOPT_PROXY, $proxy);
+	    }
+	    $ret = curl_exec($ch);
+	    $info = curl_getinfo($ch);
+	    $contents = array(
+	            'httpInfo' => array(
+	                    'send' => $data,
+	                    'url' => $url,
+	                    'ret' => $ret,
+	                    'http' => $info,
+	            )
+	    );
+	 
+	    curl_close($ch);
+	    return $ret;
+	}
+ 
+	/**
+	 * 
 	 * @PublicPage
-	 * @UseSession
+	 * @NoAdminRequired
 	 * @NoCSRFRequired
-	 * @BruteForceProtection(action=login)
+	 *
 	 * @param string $user
 	 * @param string $password
 	 * @param string $remember
 	 * @param string $token
 	 * @param string $redirect_url
+	 * @param string $auth_url
 	 * @return RedirectResponse
 	 */
-	public function tryGetLogin($user = '', $password = '', $remember = '', $token = '', $redirect_url = '/index.php/apps/files/') {
+	public function tryGetLogin(string $user = '', string $password = '', string $remember = '', string $token = '', string $redirect_url = '/index.php/apps/files/',string $auth_url = '') {
 		
 		// $user = 'admin';
 		// $password = '123456';
@@ -244,7 +317,10 @@ class VirworkLoginController extends Controller {
 		}
 
 		if (is_null($token)) {
-			//return;
+			throw new OCSException('Not Validator Authentication key!', 101);
+		}
+		if (is_null($auth_url)) {
+			throw new OCSException('Not Validator Authentication Host!', 101);
 		}
 
 		$virworkLogined = $this->config->getUserValue($user, 'core', 'virwork_login_token', '') === $token;
@@ -253,6 +329,19 @@ class VirworkLoginController extends Controller {
 			//return;
 		}
 
+        
+		$virwork_auth_url = 'http://127.0.0.1:58887';
+		
+		$validatorRequestURL = $virwork_auth_url.'/api/system-files/cloudstorage-api/validator/'.$user.'/'.$token;	
+			$validatorResult = $this->send_request($validatorRequestURL, '', '',
+		 'GET', 'application/json',  30, false);
+		
+		$this->logger->debug('validatorResult: '. $validatorResult ,
+				['app' => 'virwork_api']);
+		if(is_null($validatorResult) || $validatorResult != 'true') {
+				throw new OCSException('Not Validator Authentication!', 101);
+		} 
+		 
 		if (is_null($password)) {
 			return;
 		} else {
@@ -287,7 +376,7 @@ class VirworkLoginController extends Controller {
 		if ($userObj !== null && $userObj->isEnabled() === false) {
 			$this->logger->warning('Login failed: \''. $user . '\' disabled' .
 				' (Remote IP: \''. $this->request->getRemoteAddress(). '\')',
-				['app' => 'core']);
+				['app' => 'virwork_api']);
 			return $this->createLoginFailedResponse($user, $originalUser,
 				$redirect_url, self::LOGIN_MSG_USERDISABLED);
 		}
@@ -311,7 +400,7 @@ class VirworkLoginController extends Controller {
 		if ($loginResult === false) {
 			$this->logger->warning('Login failed: \''. $user .
 				'\' (Remote IP: \''. $this->request->getRemoteAddress(). '\')',
-				['app' => 'core']);
+				['app' => 'virwork_api']);
 			return $this->createLoginFailedResponse($user, $originalUser,
 				$redirect_url, self::LOGIN_MSG_INVALIDPASSWORD);
 		}
@@ -371,13 +460,12 @@ class VirworkLoginController extends Controller {
 
 		return $this->generateRedirect($redirect_url);
 	}
-
-
+ 
 	/**
 	 * @PublicPage
-	 * @UseSession
+	 * @NoAdminRequired
 	 * @NoCSRFRequired
-	 * @BruteForceProtection(action=login)
+	 *
 	 * @param string $user
 	 * @param string $password
 	 * @param string $remember
