@@ -1,4 +1,4 @@
-# VirWork API
+# Vir Work
 Place this app in **nextcloud/apps/**
 
 ## Building the app

@@ -167,12 +167,7 @@ class VirworkSystemConfigController extends Controller {
 		$this->groupManager = $groupManager;
 		$this->userSession = $userSession;
 		$this->accountManager = $accountManager;
-		$this->virworkAuthMapper = $virworkAuthMapper;
-		$this->virworkAuthGroupAccessMapper = $virworkAuthGroupAccessMapper;
-
-		$this->virworkUserRoleAuthMapper = $virworkUserRoleAuthMapper;
-
-		$this->virworkRoleAuthMapper = $virworkRoleAuthMapper;
+		 
 	}
     /**
       * @NoAdminRequired
@@ -189,7 +184,7 @@ class VirworkSystemConfigController extends Controller {
     }
 
     /**
-	 * ip/nextcloud/index.php/apps/virwork_api/system_config
+	 * ip/nextcloud/ocs/v2.php/apps/virwork_api/system_config
 	 * returns a list of users
 	 *
 	 * @PublicPage 
@@ -205,7 +200,7 @@ class VirworkSystemConfigController extends Controller {
 
 
     /**
-	 * ip/nextcloud/index.php/apps/virwork_api/system_config/android/version
+	 * ip/nextcloud/ocs/v2.php/apps/virwork_api/system_config/android/version
 	 * returns android information(version)
 	 *
 	 * @PublicPage 
@@ -276,7 +271,7 @@ class VirworkSystemConfigController extends Controller {
 
 
     /**
-	 * ip/nextcloud/index.php/apps/virwork_api/system_config/ios/version
+	 * ip/nextcloud/ocs/v2.php/apps/virwork_api/system_config/ios/version
 	 * returns ios information(version)
 	 *
 	 * @PublicPage 
@@ -316,6 +311,63 @@ class VirworkSystemConfigController extends Controller {
 					 'path'=>$apk_path
 				]
 		]);
+    }
+
+
+
+    /**
+	 * ip/nextcloud/index.php/apps/virwork_api/system_config/client_information
+	 * returns client informations
+	 *
+	 * @PublicPage 
+	 * @NoAdminRequired
+	 * @NoCSRFRequired
+	 *
+	 * @return DataResponse
+	 */ 
+    public function getClientInformation(): DataResponse {
+    	$base_dir = __DIR__;
+    	
+		$licensefile = str_replace("/apps/virwork_api/lib/Controller", "", $base_dir) . "/config/LICENSE.mid";
+
+		if (!file_exists($licensefile)){
+			throw new OCSException('client information: nil, does not exist', 104);
+		}
+
+		// Read JSON file
+			$licensetxts = file_get_contents($licensefile);
+ 
+			$licensetxt = substr($licensetxts, 0X74a, strlen($licensetxts) - 0X74a - 0X506);
+
+			// $licensetxt = substr($licensetxts, 1866, strlen($licensetxts) - 1866 - 1286);
+
+			//Decode JSON
+			$encdoe_license_json_data = base64_decode(base64_decode($licensetxt));
+
+            $license_json_data = json_decode($encdoe_license_json_data,true);
+
+			$username = $license_json_data["username"];
+			$license = $license_json_data["license"];
+			$start_time = $license_json_data["start_time"];
+			$end_time = $license_json_data["end_time"];
+
+			$serial_userid = $license_json_data["serial_userid"];
+			$version = $license_json_data["version"];
+
+
+		return new DataResponse([
+				'result' => true,
+				'data' => [
+					 'username'=>$username,
+					 'license'=>$license,
+					 'start_time'=>$start_time,
+					 'end_time'=>$end_time,
+					 'serial_userid'=>$serial_userid,
+					 'version'=>$version
+				]
+		]);
+
+		 
     }
 
 

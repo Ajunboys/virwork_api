@@ -71,6 +71,10 @@ return [
 	   ['name' => 'VirworkSystemConfig#getAndroidVersion', 'url' => '/system_config/android/version', 'verb' => 'GET'],
 
 	   ['name' => 'VirworkSystemConfig#getIOSVersion', 'url' => '/system_config/ios/version', 'verb' => 'GET'],
+
+
+	   ['name' => 'VirworkSystemConfig#getClientInformation', 'url' => '/system_config/client_information', 'verb' => 'GET'],
+	   
 	   ['name' => 'VirworkSystemConfig#updateStylesheet', 'url' => '/system_config/updateStylesheet', 'verb' => 'POST'],
 	   ['name' => 'VirworkSystemConfig#uploadImage', 'url' => '/system_config/uploadImage', 'verb' => 'POST'],
 
