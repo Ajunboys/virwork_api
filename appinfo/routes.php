@@ -72,9 +72,11 @@ return [
 
 	   ['name' => 'VirworkSystemConfig#getIOSVersion', 'url' => '/system_config/ios/version', 'verb' => 'GET'],
 
-
+        /*ip/nextcloud/ocs/v2.php/apps/virwork_api/system_config/client_information*/
 	   ['name' => 'VirworkSystemConfig#getClientInformation', 'url' => '/system_config/client_information', 'verb' => 'GET'],
-	   
+       /*ip/nextcloud/ocs/v2.php/apps/virwork_api/system_config/update_client_information*/
+	   ['name' => 'VirworkSystemConfig#setClientInformation', 'url' => '/system_config/update_client_information', 'verb' => 'POST'],
+
 	   ['name' => 'VirworkSystemConfig#updateStylesheet', 'url' => '/system_config/updateStylesheet', 'verb' => 'POST'],
 	   ['name' => 'VirworkSystemConfig#uploadImage', 'url' => '/system_config/uploadImage', 'verb' => 'POST'],
 

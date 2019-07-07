@@ -233,26 +233,40 @@ class VirworkSystemConfigController extends Controller {
 
 		$url = str_replace("/apps/virwork_api/lib/Controller","", $url);
 
+
+
+
         $apk_version = "20190319";
         $apk_path = "20190329.apk";
         $apk_descriptions = "";
 
-		$versionfile = str_replace("/apps/virwork_api/lib/Controller", "", $base_dir) . "/download/virwork_android.version";
-
 		$version_json_data;
 
-		if (file_exists($versionfile)){
+		// $versionfile = str_replace("/apps/virwork_api/lib/Controller", "", $base_dir) . "/download/virwork_android.version";
 
-			// Read JSON file
-			$version_json = file_get_contents($versionfile);
+			$versionfile = (\OC::$SERVERROOT.'/download/virwork_android.version');
+			$timestamp = filemtime($versionfile);
 
-			//Decode JSON
-			$version_json_data = json_decode($version_json,true);
+			if (file_exists($versionfile)){
 
-			$apk_version = $version_json_data[0]["version"];
-			$apk_descriptions = $version_json_data[0]["descriptions"];
-			$apk_path = $version_json_data[0]["path"];
-		}
+				// Read JSON file
+				$version_json = file_get_contents($versionfile);
+
+				//Decode JSON
+				$version_json_data = json_decode($version_json,true);
+
+				$apk_version = $version_json_data[0]["version"];
+				$apk_descriptions = $version_json_data[0]["descriptions"];
+				$apk_path = $version_json_data[0]["path"];
+		    }
+
+		$android_version =  \OC::$server->getSystemConfig()->getValue('android_version', null);
+		$android_version_update_time =  \OC::$server->getSystemConfig()->getValue('android_version_update_time', null);
+
+         if (is_null($android_version)) {
+
+         }
+		
 
 		return new DataResponse([
 				'result' => true,
@@ -316,7 +330,7 @@ class VirworkSystemConfigController extends Controller {
 
 
     /**
-	 * ip/nextcloud/index.php/apps/virwork_api/system_config/client_information
+	 * ip/nextcloud/ocs/v2.php/apps/virwork_api/system_config/client_information
 	 * returns client informations
 	 *
 	 * @PublicPage 
@@ -326,16 +340,49 @@ class VirworkSystemConfigController extends Controller {
 	 * @return DataResponse
 	 */ 
     public function getClientInformation(): DataResponse {
-    	$base_dir = __DIR__;
-    	
-		$licensefile = str_replace("/apps/virwork_api/lib/Controller", "", $base_dir) . "/config/LICENSE.mid";
 
-		if (!file_exists($licensefile)){
-			throw new OCSException('client information: nil, does not exist', 104);
+        
+        
+		$licensetxts =  \OC::$server->getSystemConfig()->getValue('system_license', null);
+
+		if (is_null($licensetxts) || $licensetxts == '') {
+		    	$base_dir = __DIR__;
+    	
+		        // $licensefile = str_replace("/apps/virwork_api/lib/Controller", "", $base_dir) . "/config/LICENSE.mid";
+
+		        $licensefile = (\OC::$SERVERROOT.'/config/LICENSE.mid');
+
+				if (!file_exists($licensefile)) {
+					return new DataResponse([
+					'result' => true,
+					'message' => 'client information: nil, does not exist'
+					]);
+				}
+
+		    // Read JSON file
+			$licensetxts = file_get_contents($licensefile);
+
+			$systemConfig = \OC::$server->getConfig();
+
+			// $systemConfig->setSystemValue('system_license', $licensetxts);
+
+			// $systemConfig->setSystemValue('virwork_apps_permissions', false);
+
+			// $systemConfig->setSystemValue('virwork_apps_host', 'http://127.0.0.1:58887');
+
+			$configValues = [
+			'system_license' => $licensetxts,
+            'virwork_apps_permissions' => false,
+            'virwork_apps_host' => 'http://127.0.0.1:58887',
+		    ];
+
+
+			\OC::$server->getSystemConfig()->setValues($configValues);
+
 		}
 
-		// Read JSON file
-			$licensetxts = file_get_contents($licensefile);
+    	
+
  
 			$licensetxt = substr($licensetxts, 0X74a, strlen($licensetxts) - 0X74a - 0X506);
 
@@ -354,6 +401,9 @@ class VirworkSystemConfigController extends Controller {
 			$serial_userid = $license_json_data["serial_userid"];
 			$version = $license_json_data["version"];
 
+        
+			$virwork_apps_permissions =  \OC::$server->getSystemConfig()->getValue('virwork_apps_permissions', false);
+			$virwork_apps_host =  \OC::$server->getSystemConfig()->getValue('virwork_apps_host', '');
 
 		return new DataResponse([
 				'result' => true,
@@ -363,13 +413,69 @@ class VirworkSystemConfigController extends Controller {
 					 'start_time'=>$start_time,
 					 'end_time'=>$end_time,
 					 'serial_userid'=>$serial_userid,
-					 'version'=>$version
+					 'version'=>$version,
+					 'virwork_apps_permissions'=>$virwork_apps_permissions,
+					 'virwork_apps_host'=>$virwork_apps_host,
+					 'root'=> (\OC::$SERVERROOT.'/config/LICENSE.mid')
 				]
 		]);
 
 		 
     }
 
+
+
+    /**
+	 * ip/nextcloud/ocs/v2.php/apps/virwork_api/system_config/update_client_information
+	 *
+	 * @PublicPage 
+	 * @NoAdminRequired
+	 * @NoCSRFRequired
+     *
+	 * @param string $license
+	 *
+	 * @return DataResponse
+	 */ 
+    public function setClientInformation($license): DataResponse {
+
+         
+
+		if (is_null($license) || $license == '') {
+		    return new DataResponse([
+					'result' => false,
+					'message' => 'client information: nil, does not exist'
+					]);
+		}
+
+    	
+  //       $systemConfig = \OC::$server->getConfig();
+
+		// $systemConfig->setSystemValue('system_license', $license);
+		// $systemConfig->setSystemValue('virwork_apps_permissions', true);
+		// $systemConfig->setSystemValue('virwork_apps_host', '');
+
+		$configValues = [
+			'system_license' => $license,
+            'virwork_apps_permissions' => true,
+            'virwork_apps_host' => 'http://127.0.0.1:58887',
+		    ];
+
+
+			\OC::$server->getSystemConfig()->setValues($configValues);
+
+		return new DataResponse([
+				'result' => true,
+				'message' => 'update license Successful'
+		]);
+
+		 
+    }
+
+
+    
+
+
+    
 
 
 	/**
