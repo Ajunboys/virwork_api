@@ -405,6 +405,17 @@ class VirworkSystemConfigController extends Controller {
 			$virwork_apps_permissions =  \OC::$server->getSystemConfig()->getValue('virwork_apps_permissions', false);
 			$virwork_apps_host =  \OC::$server->getSystemConfig()->getValue('virwork_apps_host', '');
 
+        	$virwork_two_server =  \OC::$server->getSystemConfig()->getValue('virwork_two_server', 'false');
+    
+        	$virwork_out_server_http_ip =  \OC::$server->getSystemConfig()->getValue('virwork_out_server_http_ip', '');
+    
+        	$virwork_out_server_https_ip =  \OC::$server->getSystemConfig()->getValue('virwork_out_server_https_ip', '');
+    
+        	
+        	$virwork_out_server_http_port =  \OC::$server->getSystemConfig()->getValue('virwork_out_server_http_port', '58887');
+        	$virwork_out_server_https_port =  \OC::$server->getSystemConfig()->getValue('virwork_out_server_https_port', '58888');
+    
+
 		return new DataResponse([
 				'result' => true,
 				'data' => [
@@ -416,7 +427,13 @@ class VirworkSystemConfigController extends Controller {
 					 'version'=>$version,
 					 'virwork_apps_permissions'=>$virwork_apps_permissions,
 					 'virwork_apps_host'=>$virwork_apps_host,
-					 'root'=> (\OC::$SERVERROOT.'/config/LICENSE.mid')
+					 'virwork_two_server'=>$virwork_two_server,
+					 'virwork_out_server_http_ip'=>$virwork_out_server_http_ip,
+					 'virwork_out_server_https_ip'=>$virwork_out_server_https_ip,
+					 'virwork_out_server_http_port'=>$virwork_out_server_http_port,
+					 'virwork_out_server_https_port'=>$virwork_out_server_https_port,
+
+					 // 'root'=> (\OC::$SERVERROOT.'/config/LICENSE.mid')
 				]
 		]);
 
@@ -460,8 +477,24 @@ class VirworkSystemConfigController extends Controller {
             'virwork_apps_host' => 'http://127.0.0.1:58887',
 		    ];
 
+        // save license to the config.php
+		\OC::$server->getSystemConfig()->setValues($configValues);
+		// write license to the LICENSE.mid file
+        file_put_contents( \OC::$SERVERROOT.'/config/LICENSE.mid', $license);
 
-			\OC::$server->getSystemConfig()->setValues($configValues);
+        $skeletondirectory =  \OC::$server->getSystemConfig()->getValue('skeletondirectory', null);
+
+		$skeletondirectory_file = (\OC::$SERVERROOT.'/apps/virwork_api/user_init_datas');
+
+		if (is_null($skeletondirectory) || $skeletondirectory != $skeletondirectory_file) {
+			 	
+			if (file_exists($skeletondirectory_file)) {
+					\OC::$server->getSystemConfig()->setValue('skeletondirectory', $skeletondirectory_file);
+			} else {
+			 		\OC::$server->getSystemConfig()->setValue('skeletondirectory', '');
+			}
+		}
+
 
 		return new DataResponse([
 				'result' => true,

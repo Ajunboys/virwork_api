@@ -323,10 +323,10 @@ class VirworkLoginController extends Controller {
 			throw new OCSException('Not Validator Authentication Host!', 101);
 		}
 
-		$virworkLogined = $this->config->getUserValue($user, 'core', 'virwork_login_token', '') === $token;
+		$virworkLogined = $this->config->getUserValue($user, 'core', 'virwork_login_token', '') == $token;
 
 		if(!$virworkLogined) {
-			//return;
+			return;
 		}
 
         
@@ -488,9 +488,13 @@ class VirworkLoginController extends Controller {
 			return;
 		}
 
-		$virworkLogined = $this->config->getUserValue($user, 'core', 'virwork_login_token', '') === $token;
+		$virwork_login_token = $this->config->getUserValue($user, 'core', 'virwork_login_token', '');
 
-		if(!$virworkLogined) {
+		if (is_null($virwork_login_token) || $virwork_login_token == '') {
+			return;
+		}
+
+		if($token != $virwork_login_token) {
 			return;
 		}
 
@@ -575,11 +579,17 @@ class VirworkLoginController extends Controller {
 
 		$this->session->set('last-password-confirm', $loginResult->getLastLogin());
 
-        $this->config->setUserValue($loginResult->getUID(), 'core', 'virwork_login_token', $token); 
+        // user logined reset virwork login token to generate
+        $this->config->setUserValue($loginResult->getUID(), 'core', 'virwork_login_token', $this->secureRandom->generate(32)); 
 
 		if ($timezone_offset !== '') {
 			$this->config->setUserValue($loginResult->getUID(), 'core', 'timezone', $timezone);
 			$this->session->set('timezone', $timezone_offset);
+		}
+
+
+		if ($remember_login) {
+			$this->userSession->createRememberMeToken($loginResult);
 		}
 
 		if ($this->twoFactorManager->isTwoFactorAuthenticated($loginResult)) {
@@ -606,9 +616,6 @@ class VirworkLoginController extends Controller {
 			return new RedirectResponse($this->urlGenerator->linkToRoute($url, $urlParams));
 		}
 
-		if ($remember_login) {
-			$this->userSession->createRememberMeToken($loginResult);
-		}
 
 		return $this->generateRedirect($redirect_url);
 	}
@@ -643,7 +650,7 @@ class VirworkLoginController extends Controller {
 			$this->config->deleteUserValue($username, 'login_token', $loginToken);
 		}
 
-        $this->config->setUserValue($username, 'core', 'virwork_login_token', $this->secureRandom->generate(32)); 
+        $this->config->setUserValue($targetUser->getUID(), 'core', 'virwork_login_token', $this->secureRandom->generate(32)); 
 
 		$this->userSession->logout();
 

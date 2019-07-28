@@ -19,10 +19,13 @@ return [
 
 
 
-	   ['name' => 'Users#enableUser', 'url' => '/users/enable/{username}', 'verb' => 'GET'],
+	   ['name' => 'Users#enableUser', 'url' => '/users/enable', 'verb' => 'POST'],
 
 
-	   ['name' => 'Users#disableUser', 'url' => '/users/disable/{username}', 'verb' => 'GET'],
+	   ['name' => 'Users#disableUser', 'url' => '/users/disable', 'verb' => 'POST'],
+
+	   ['name' => 'Users#deleteUser', 'url' => '/users/delete', 'verb' => 'POST'],
+	   
 
 		/*all users:<server>/ocs/v2.php/apps/virwork_api/users/fillStorageInfo/{username}?operation_code=virwork_cloudstorage_account*/
 	   ['name' => 'Users#fillStorageInfo', 'url' => '/users/storage_info/{username}', 'verb' => 'GET'],
@@ -38,10 +41,8 @@ return [
 	   ['name' => 'Users#getGroupUsersDetails', 'url' => '/groups/group/users/details', 'verb' => 'GET'],
       
 	   ['name' => 'Users#addUser', 'url' => '/users/add', 'verb' => 'POST'],
+	   ['name' => 'Users#syncUserVirworkLoginToken', 'url' => '/users/sync_status', 'verb' => 'POST'],
 
-
-		['name' => 'Users#enableUser', 'url' => '/users/{userId}/enable', 'verb' => 'GET'],
-		['name' => 'Users#disableUser', 'url' => '/users/{userId}/disable', 'verb' => 'GET'],
 
 	   ['name' => 'Users#getUserPreferencesValues', 'url' => '/users/files_permission/{username}', 'verb' => 'GET'],
 

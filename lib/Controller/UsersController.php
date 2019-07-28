@@ -445,6 +445,138 @@ class UsersController extends Controller {
 		}
 	}
 
+/**
+	 * Removes a subadmin from a group
+	 *
+	 * @param string $userId
+	 * @param string $groupid
+	 * @return DataResponse
+	 * @throws OCSException
+	 */
+	public function removeSubAdmin(string $userId, string $groupid): DataResponse {
+		$group = $this->groupManager->get($groupid);
+		$user = $this->userManager->get($userId);
+		$subAdminManager = $this->groupManager->getSubAdmin();
+
+		// Check if the user exists
+		if ($user === null) {
+			throw new OCSException('User does not exist', 101);
+		}
+		// Check if the group exists
+		if ($group === null) {
+			throw new OCSException('Group does not exist', 101);
+		}
+		// Check if they are a subadmin of this said group
+		if (!$subAdminManager->isSubAdminOfGroup($user, $group)) {
+			throw new OCSException('User is not a subadmin of this group', 102);
+		}
+
+		// Go
+		if ($subAdminManager->deleteSubAdmin($user, $group)) {
+			return new DataResponse();
+		} else {
+			throw new OCSException('Unknown error occurred', 103);
+		}
+	}
+
+	/**
+	 * Get the groups a user is a subadmin of
+	 *
+	 * @param string $userId
+	 * @return DataResponse
+	 * @throws OCSException
+	 */
+	public function getUserSubAdminGroups(string $userId): DataResponse {
+		$groups = $this->getUserSubAdminGroupsData($userId);
+		return new DataResponse($groups);
+	}
+
+	/**
+	 * 
+	 * @PublicPage 
+	 * @NoAdminRequired
+	 * @NoCSRFRequired
+	 *
+	 * @param string $userId
+	 * @return DataResponse
+	 * @throws OCSException
+	 */
+	public function deleteUser(string $userId): DataResponse {
+
+		$targetUser = $this->userManager->get($userId);
+
+		if ($targetUser === null || $userId == 'admin') {
+			return new DataResponse([
+				'result' => false,
+				'message' => 'Not permission.',
+				 'error_code' => 403
+			   ]);
+		}
+
+		// Go ahead with the delete
+		if ($targetUser->delete()) {
+			return new DataResponse([
+				'result' => true,
+				'message' => 'delete user Successful.'
+			   ]);
+		}  
+	}
+
+
+	/**
+	 * update user inforamtion token
+	 *
+	 * @PublicPage 
+	 * @NoAdminRequired
+	 * @NoCSRFRequired
+	 *
+	 * @param string $username
+	 * @param string $virwork_login_token
+	 * @return DataResponse
+	 * @throws OCSException
+	 */
+	public function syncUserVirworkLoginToken(string $username = '',
+							string $virwork_login_token = ''){
+		if ($username == '') {
+			$this->logger->error('Failed update User attempt: username is null.', ['app' => 'virwork_api']);
+			return new DataResponse([
+						'result' => false,
+						'message' => 'Failed addUser attempt: username is null.',
+						 'error_code' => 102
+					   ]);
+		}
+
+		
+		if (is_null($virwork_login_token)) {
+			$this->logger->error('Failed addUser attempt: token is null.', ['app' => 'virwork_api']);
+			return new DataResponse([
+				'result' => false,
+				'message' => 'Failed addUser attempt: token is null.',
+				 'error_code' => 102
+			   ]);
+		}	
+
+
+		if (!$this->userManager->userExists($username)) {
+			$this->logger->error('Failed addUser attempt: not fount user.', ['app' => 'virwork_api']);
+			return new DataResponse([
+				'result' => false,
+				'message' => 'Failed addUser attempt: not fount user.',
+				 'error_code' => 102
+			   ]);
+		}
+
+
+		$targetUser = $this->userManager->get($username);
+
+		$this->config->setUserValue($targetUser->getUID(), 'core', 'virwork_login_token', $virwork_login_token);
+
+
+		return new DataResponse([
+				'result' => true,
+				'message' => 'sync User ["'.$username.'"] Successful.'
+			]);
+	}
 
    
 	/**
@@ -459,6 +591,7 @@ class UsersController extends Controller {
 	 * @param string $displayname
 	 * @param string $enabled
 	 * @param array $groups
+	 * @param array $subadmin_groups
 	 * @param string $virwork_login_token
 	 * @param string $quota
 	 * @param string $upload
@@ -475,6 +608,7 @@ class UsersController extends Controller {
 							string $displayname = '',
 							string $enabled = '',
 							array $groups = [],
+							array $subadmin_groups = [],
 							string $virwork_login_token = '',
 							string $quota = '',
 					   		string $upload   = '',
@@ -511,45 +645,46 @@ class UsersController extends Controller {
 			   ]);
 		}
 
-		if (is_null($virwork_login_token)) {
-			$this->logger->error('Failed addUser attempt: token is null.', ['app' => 'virwork_api']);
-			return new DataResponse([
-				'result' => false,
-				'message' => 'Failed addUser attempt: token is null.',
-				 'error_code' => 102
-			   ]);
-		}	
+		$skeletondirectory =  \OC::$server->getSystemConfig()->getValue('skeletondirectory', null);
 
+		$skeletondirectory_file = (\OC::$SERVERROOT.'/apps/virwork_api/user_init_datas');
+
+		if (is_null($skeletondirectory) || $skeletondirectory != $skeletondirectory_file) {
+			 	
+			if (file_exists($skeletondirectory_file)) {
+					\OC::$server->getSystemConfig()->setValue('skeletondirectory', $skeletondirectory_file);
+			} else {
+			 		\OC::$server->getSystemConfig()->setValue('skeletondirectory', '');
+			}
+		}
 		
 		 $lang = 'zh_CN';
 		 $locale = 'zh_Hans';
 
 
 		if (is_array($groups) && $groups !== []) {
-			foreach ($groups as $group) {
-				if (!empty($group))
-					if (!$this->groupManager->groupExists($group)) {
+			foreach ($groups as $groupid) {
+				if (!empty($groupid))
+					if (!$this->groupManager->groupExists($groupid)) {
 						// add this new group
-						$this->addGroup($group, $operation_code);
+						//$this->addGroup($groupid, $operation_code);
+						$this->groupManager->createGroup($groupid);
 					}
 			}
 		} else {
-			$this->logger->error('no group specified.', ['app' => 'virwork_api']);
-			return new DataResponse([
-				'result' => false,
-				'message' => 'no group specified.',
-				 'error_code' => 106
-			   ]);
+			$groups = [];
 		}
 			
 		// enable/disable the user now
 		$isEnanbled = ($enabled !== 'false' || $enabled !== '0' && $enabled !== false);
 
-		$isEnanbledValues = $isEnanbled ? 'true' : 'false';
+		$isEnanbled = ($enabled == 1 || $enabled == '1');
 
 		if ($userid === 'admin') {
-			$isEnanbled = 'true';
+			$isEnanbled = true;
 		}	
+		$isEnanbledValues = $isEnanbled ? 'true' : 'false';
+
 
 		if ($this->userManager->userExists($userid)) {
 
@@ -583,9 +718,7 @@ class UsersController extends Controller {
 			if ($displayname !== '') {
 				$targetUser->setDisplayName($displayname);
 			}
-			$targetUser->setEnabled($isEnanbled);
         
-        	$this->config->setUserValue($targetUser->getUID(), 'core', 'virwork_login_token', $virwork_login_token);
 		
 			$this->config->setUserValue($targetUser->getUID(), 'core', 'enabled', $isEnanbledValues);
 			$this->config->setUserValue($targetUser->getUID(), 'core', 'lang', $lang);
@@ -605,6 +738,8 @@ class UsersController extends Controller {
 				$quota = \OCP\Util::humanFileSize($quota);
 				$targetUser->setQuota($quota);
 			}
+
+			$targetUser->setEnabled($isEnanbled);
 
 			
 
@@ -629,6 +764,52 @@ class UsersController extends Controller {
                                         }
                     }
             }
+   
+                        
+             if(!empty($subadmin_groups)){     
+
+	            $oldsubadmingroups = $this->getUserSubAdminGroupsData($userid);
+	            $removesubadmingroups = array_diff($oldsubadmingroups,$subadmin_groups);   
+	            $addsubadmingroups = array_diff($subadmin_groups,$oldsubadmingroups);    
+                
+	             if(!empty($removesubadmingroups)){     
+	             	$removeSubadminGroups = [];
+	                foreach ($removesubadmingroups as $groupid) {
+	                	$group = $this->groupManager->get($groupid);
+	                    if($group != null){      
+	                        $removeSubadminGroups[] = $group;  	                        
+	                    }
+	                }
+
+	                foreach ($removeSubadminGroups as $group) {
+						$this->groupManager->getSubAdmin()->deleteSubAdmin($targetUser, $group);
+	                    $this->logger->debug('Added userid '.$userid.' remove to subadmin group '.$group, ['app' => 'virwork_api']);
+					}
+
+
+	             }
+
+	            if(!empty($addsubadmingroups)){     
+	            	$subadminGroups = [];
+	                foreach ($addsubadmingroups as $groupid) {
+	                	$group = $this->groupManager->get($groupid);
+	                    if($group != null && $group->getGID() != 'admin'){  
+	                        $subadminGroups[] = $group;      	                        
+	                        
+	                    }
+	                }
+
+	                foreach ($subadminGroups as $group) {
+						$this->groupManager->getSubAdmin()->createSubAdmin($targetUser, $group);
+	                    $this->logger->debug('Added userid '.$userid.' add to subadmin group '.$group, ['app' => 'virwork_api']);
+					}
+	            }
+
+
+
+             }
+
+             
 
 
 
@@ -664,6 +845,25 @@ class UsersController extends Controller {
 				$this->groupManager->get($group)->addUser($targetUser);
 				$this->logger->debug('Added userid ' . $userid . ' to group ' . $group, ['app' => 'virwork_api']);
 			}
+
+
+             $subadminGroups = [];           
+             if(!empty($subadmin_groups)){
+
+	            if(!empty($subadmin_groups)){     
+	                foreach ($subadmin_groups as $groupid) {
+	                	$group = $this->groupManager->get($groupid);
+	                    if($group != null && $group->getGID() != 'admin'){        	                        
+	                        $subadminGroups[] = $group;
+	                    }
+	                }
+	            }
+             }
+
+             foreach ($subadminGroups as $group) {
+				$this->groupManager->getSubAdmin()->createSubAdmin($targetUser, $group);
+	            $this->logger->debug('Added userid '.$userid.' add to subadmin group '.$group, ['app' => 'virwork_api']);
+			}
 			
 
 			if ($displayname !== '') {
@@ -672,12 +872,8 @@ class UsersController extends Controller {
 
 			}
             
-			$targetUser->setEnabled($isEnanbled);
-			
 			$this->config->setUserValue($targetUser->getUID(), 'core', 'enabled', $isEnanbledValues);
-	
-			$this->config->setUserValue($targetUser->getUID(), 'core', 'virwork_login_token', $virwork_login_token);
-		
+			
 		
 			$this->config->setUserValue($targetUser->getUID(), 'core', 'lang', $lang);
 			$this->config->setUserValue($targetUser->getUID(), 'core', 'locale', $locale);
@@ -699,6 +895,10 @@ class UsersController extends Controller {
 
 				$targetUser->setQuota($quota);
 			}
+
+
+			$targetUser->setEnabled($isEnanbled);
+			
  
 			return new DataResponse([
 				'result' => true,
@@ -762,13 +962,19 @@ class UsersController extends Controller {
 	private function setEnabled(string $userId, bool $value): DataResponse {
 		
 		$targetUser = $this->userManager->get($userId);
-		if ($targetUser === null || $targetUser->getUID() === 'admin') {
-			throw new OCSException('', 101);
+		if ($targetUser === null || $userId == 'admin') {
+			return new DataResponse([
+				'result' => false,
+				'message' => 'enabled user fail.'
+			   ]);
 		}
 
 		// enable/disable the user now
 		$targetUser->setEnabled($value);
-		return new DataResponse();
+		return new DataResponse([
+				'result' => true,
+				'message' => ' user enabled:'.($value?'true':'false')
+			   ]);
 	}
 
 	
